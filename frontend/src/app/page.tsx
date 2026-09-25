@@ -228,14 +228,14 @@ export default function CommandCenter() {
         />
         <MetricCard
           label="Avg Benchmark"
-          value={metrics.avgQuality > 0 ? `${metrics.avgQuality}%` : "92.0%"}
+          value={metrics.avgQuality > 0 ? `${metrics.avgQuality}%` : "—"}
           subtext="Evaluator Quality Score"
           valueColor="text-emerald-400"
           icon={<Award className="w-4 h-4 text-emerald-400" />}
         />
         <MetricCard
           label="Cost / Execution"
-          value={metrics.avgCost > 0 ? `$${metrics.avgCost}` : "$0.0003"}
+          value={metrics.avgCost > 0 ? `$${metrics.avgCost}` : "—"}
           subtext="Groq Token Efficiency"
           icon={<DollarSign className="w-4 h-4 text-zinc-400" />}
         />
