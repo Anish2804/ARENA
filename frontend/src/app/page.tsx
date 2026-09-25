@@ -123,7 +123,7 @@ export default function CommandCenter() {
 
   useEffect(() => {
     loadData();
-    const interval = setInterval(loadData, 3000);
+    const interval = setInterval(loadData, 15000);
     return () => clearInterval(interval);
   }, []);
 
@@ -145,7 +145,7 @@ export default function CommandCenter() {
       } catch (e) {
         console.error("Error polling active task", e);
       }
-    }, 2000);
+    }, 5000);
 
     return () => clearInterval(taskPoll);
   }, [activeTask]);

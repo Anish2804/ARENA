@@ -1,9 +1,23 @@
 from fastapi import APIRouter, Depends, HTTPException, BackgroundTasks
+from fastapi.responses import JSONResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
 from sqlalchemy.orm import selectinload
 from typing import List
 import uuid
+import time
+
+# Simple in-memory TTL cache for read-heavy endpoints
+_cache: dict = {}
+
+def get_cached(key: str, ttl: int = 10):
+    entry = _cache.get(key)
+    if entry and (time.time() - entry["ts"]) < ttl:
+        return entry["data"]
+    return None
+
+def set_cache(key: str, data):
+    _cache[key] = {"data": data, "ts": time.time()}
 
 from app.database.connection import get_db
 from app.database.models import Task, Agent, AgentRun, Evaluation, ActivityEvent
@@ -13,10 +27,16 @@ from app.services.task_service import process_task
 
 router = APIRouter()
 
-@router.get("/agents", response_model=List[AgentSchema])
+@router.get("/agents")
 async def get_agents(db: AsyncSession = Depends(get_db)):
+    cached = get_cached("agents", ttl=15)
+    if cached is not None:
+        return JSONResponse(content=cached, headers={"Cache-Control": "public, max-age=10"})
     result = await db.execute(select(Agent).order_by(Agent.name.asc()))
-    return result.scalars().all()
+    agents = result.scalars().all()
+    data = [{"id": a.id, "name": a.name, "role": a.role, "description": a.description, "model": a.model, "system_prompt": a.system_prompt, "status": a.status} for a in agents]
+    set_cache("agents", data)
+    return JSONResponse(content=data, headers={"Cache-Control": "public, max-age=10"})
 
 @router.post("/tasks", response_model=TaskSchema)
 async def create_task(task_in: TaskCreate, background_tasks: BackgroundTasks, db: AsyncSession = Depends(get_db)):
@@ -91,20 +111,30 @@ async def get_task_details(task_id: str, db: AsyncSession = Depends(get_db)):
 
 @router.get("/leaderboard")
 async def get_leaderboard(db: AsyncSession = Depends(get_db)):
+    cached = get_cached("leaderboard", ttl=10)
+    if cached is not None:
+        return JSONResponse(content=cached, headers={"Cache-Control": "public, max-age=8"})
+    
     stmt = select(Agent)
     result = await db.execute(stmt)
     agents = result.scalars().all()
     
+    run_stmt = select(AgentRun).options(selectinload(AgentRun.evaluation)).where(
+        AgentRun.status == 'completed'
+    )
+    run_result = await db.execute(run_stmt)
+    all_runs = run_result.scalars().all()
+    
+    runs_by_agent = {agent.id: [] for agent in agents}
+    for r in all_runs:
+        if r.agent_id in runs_by_agent:
+            runs_by_agent[r.agent_id].append(r)
+    
     leaderboard = []
     for agent in agents:
-        run_stmt = select(AgentRun).options(selectinload(AgentRun.evaluation)).where(
-            AgentRun.agent_id == agent.id, 
-            AgentRun.status == 'completed'
-        )
-        run_result = await db.execute(run_stmt)
-        runs = run_result.scalars().all()
-        
+        runs = runs_by_agent[agent.id]
         completed_evals = [r.evaluation for r in runs if r.evaluation]
+        
         if not runs or not completed_evals:
             leaderboard.append({
                 "agent_id": agent.id,
@@ -138,7 +168,8 @@ async def get_leaderboard(db: AsyncSession = Depends(get_db)):
         })
         
     leaderboard.sort(key=lambda x: (x["total_tasks"] > 0, x["score"]), reverse=True)
-    return leaderboard
+    set_cache("leaderboard", leaderboard)
+    return JSONResponse(content=leaderboard, headers={"Cache-Control": "public, max-age=8"})
 
 @router.get("/activity")
 async def get_activity(db: AsyncSession = Depends(get_db), limit: int = 20):

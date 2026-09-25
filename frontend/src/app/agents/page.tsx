@@ -80,7 +80,7 @@ export default function AgentsPage() {
 
   useEffect(() => {
     fetchAgentsData();
-    const interval = setInterval(fetchAgentsData, 5000);
+    const interval = setInterval(fetchAgentsData, 30000);
     return () => clearInterval(interval);
   }, []);
 

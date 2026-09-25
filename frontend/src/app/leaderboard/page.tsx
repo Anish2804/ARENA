@@ -53,7 +53,7 @@ export default function Leaderboard() {
 
   useEffect(() => {
     fetchLeaderboard();
-    const interval = setInterval(fetchLeaderboard, 4000);
+    const interval = setInterval(fetchLeaderboard, 30000);
     return () => clearInterval(interval);
   }, []);
 

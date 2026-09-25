@@ -110,7 +110,7 @@ export default function TasksPage() {
   // Polling for tasks list
   useEffect(() => {
     fetchTasks();
-    const interval = setInterval(fetchTasks, 4000);
+    const interval = setInterval(fetchTasks, 15000);
     return () => clearInterval(interval);
   }, []);
 
@@ -130,7 +130,7 @@ export default function TasksPage() {
       } catch (e) {
         console.error(e);
       }
-    }, 2000);
+    }, 5000);
 
     return () => clearInterval(interval);
   }, [selectedTask]);
