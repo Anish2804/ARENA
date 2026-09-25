@@ -6,16 +6,32 @@ from app.config.settings import settings
 
 logger = logging.getLogger("arena.executor")
 
-client = AsyncGroq(api_key=settings.GROQ_API_KEY)
+def get_groq_client() -> AsyncGroq:
+    api_key = settings.GROQ_API_KEY.strip().strip('"').strip("'")
+    if not api_key:
+        raise ValueError("GROQ_API_KEY is not configured in environment variables. Please set GROQ_API_KEY in Render Dashboard -> Environment.")
+    return AsyncGroq(api_key=api_key, timeout=60.0, max_retries=2)
 
 async def execute_agent(agent: Any, task_prompt: str) -> Dict[str, Any]:
     start_time = time.perf_counter()
     
+    if not settings.GROQ_API_KEY:
+        return {
+            "status": "failed",
+            "response": "Execution failed: GROQ_API_KEY is missing in backend environment variables. Please configure GROQ_API_KEY in Render Dashboard -> Environment.",
+            "input_tokens": 0,
+            "output_tokens": 0,
+            "total_tokens": 0,
+            "latency_ms": 0.0,
+            "estimated_cost": 0.0
+        }
+
     # Respect agent-specific execution profiles if configured
     temperature = getattr(agent, "temperature", 0.7)
     max_tokens = getattr(agent, "max_tokens", 1024)
     
     try:
+        client = get_groq_client()
         completion = await client.chat.completions.create(
             model=agent.model,
             messages=[

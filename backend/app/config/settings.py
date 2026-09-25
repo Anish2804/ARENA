@@ -10,10 +10,14 @@ if raw_db_url.startswith("postgresql://"):
 cors_origins_env = os.getenv("CORS_ORIGINS", "http://localhost:3000,http://127.0.0.1:3000")
 cors_origins_list = [o.strip() for o in cors_origins_env.split(",") if o.strip()]
 
+raw_groq_key = os.getenv("GROQ_API_KEY", "").strip().strip('"').strip("'")
+raw_llm_model = os.getenv("LLM_MODEL", "openai/gpt-oss-20b").strip().strip('"').strip("'")
+
 class Settings:
     DATABASE_URL: str = raw_db_url
-    GROQ_API_KEY: str = os.getenv("GROQ_API_KEY", "")
-    LLM_MODEL: str = os.getenv("LLM_MODEL", "openai/gpt-oss-20b")
+    GROQ_API_KEY: str = raw_groq_key
+    LLM_MODEL: str = raw_llm_model or "openai/gpt-oss-20b"
     CORS_ORIGINS: list[str] = cors_origins_list
 
 settings = Settings()
+

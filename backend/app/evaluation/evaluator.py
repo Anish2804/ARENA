@@ -6,7 +6,11 @@ from app.config.settings import settings
 
 logger = logging.getLogger("arena.evaluator")
 
-client = AsyncGroq(api_key=settings.GROQ_API_KEY)
+def get_evaluator_client() -> AsyncGroq:
+    api_key = settings.GROQ_API_KEY.strip().strip('"').strip("'")
+    if not api_key:
+        raise ValueError("GROQ_API_KEY is not configured in environment variables.")
+    return AsyncGroq(api_key=api_key, timeout=60.0, max_retries=2)
 
 EVALUATOR_PROMPT = """
 You are an expert evaluator. Evaluate the agent's response to the given task.
@@ -40,7 +44,16 @@ def _clean_numeric(value, default: float = 0.0) -> float:
         return default
 
 async def evaluate_response(task_prompt: str, agent_response: str) -> dict:
+    if not settings.GROQ_API_KEY:
+        return {
+            "quality_score": 0.0,
+            "accuracy_score": 0.0,
+            "evaluator_feedback": "Evaluation error: GROQ_API_KEY is not configured in backend environment variables.",
+            "decision": "rejected"
+        }
+
     try:
+        client = get_evaluator_client()
         completion = await client.chat.completions.create(
             model=settings.LLM_MODEL,
             messages=[
