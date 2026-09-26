@@ -205,12 +205,7 @@ export default function AgentsPage() {
             </p>
           </div>
         </div>
-        <button 
-          onClick={() => setIsRegisterOpen(true)}
-          className="group inline-flex items-center gap-2 rounded-xl bg-white/[0.08] border border-white/10 px-5 py-2.5 text-[13px] font-medium text-white/70 transition-all hover:bg-white/[0.12] hover:text-white hover:border-white/15 hover:shadow-lg hover:shadow-white/5"
-        >
-          Register New Agent
-        </button>
+
       </div>
 
       {/* Metrics */}
