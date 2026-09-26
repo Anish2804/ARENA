@@ -4,6 +4,16 @@ import { Canvas, useFrame } from "@react-three/fiber";
 import { Edges } from "@react-three/drei";
 import * as THREE from "three";
 
+// Axes for twist logic
+const AXES_UNNORM = [
+  new THREE.Vector3(1, 1, 1),
+  new THREE.Vector3(-1, -1, 1),
+  new THREE.Vector3(-1, 1, -1),
+  new THREE.Vector3(1, -1, -1),
+];
+const AXES = AXES_UNNORM.map(v => v.clone().normalize());
+const _q = new THREE.Quaternion();
+
 // Existing geometry definitions to PRESERVE SHAPE
 const TETRA_POSITIONS = [
   [2, 2, 2], [0, 0, 2], [0, 2, 0], [2, 0, 0],
@@ -37,12 +47,12 @@ function PyraminxPiece({
   const meshRef = useRef<THREE.Mesh>(null);
   const edgeMatRef = useRef<THREE.LineBasicMaterial>(null);
   
-  // Random starting offsets for the assembly animation
-  const startPos = useMemo(() => {
+  // Random starting offsets for the assembly animation (relative to final position)
+  const localStartPos = useMemo(() => {
     const dir = targetPos.clone().normalize();
     if (dir.lengthSq() === 0) dir.set(0, 1, 0);
     // Explode outwards randomly
-    return targetPos.clone().add(dir.multiplyScalar(4 + Math.random() * 8));
+    return dir.multiplyScalar(4 + Math.random() * 8);
   }, [targetPos]);
   
   const startRot = useMemo(() => {
@@ -65,8 +75,8 @@ function PyraminxPiece({
     const progress = Math.min(1, animTime / duration);
     const eased = easeOutQuart(progress);
 
-    // Interpolate position and rotation
-    meshRef.current.position.lerpVectors(startPos, targetPos, eased);
+    // Interpolate local position and rotation
+    meshRef.current.position.lerpVectors(localStartPos, new THREE.Vector3(0,0,0), eased);
     
     meshRef.current.rotation.x = THREE.MathUtils.lerp(startRot.x, 0, eased);
     meshRef.current.rotation.y = THREE.MathUtils.lerp(startRot.y, 0, eased);
@@ -75,9 +85,8 @@ function PyraminxPiece({
     // 2. Continuous Subtle Breathing / Floating (starts after assembly)
     if (progress === 1) {
       const breathe = Math.sin(time * 1.5 + index) * 0.04;
-      // Gently expand and contract from center
       const dir = targetPos.clone().normalize();
-      meshRef.current.position.copy(targetPos).add(dir.multiplyScalar(breathe));
+      meshRef.current.position.copy(dir.multiplyScalar(breathe));
     }
 
     // 3. Edge Glow Sweep
@@ -109,6 +118,18 @@ function PyraminxPiece({
 function PyraminxCore() {
   const groupRef = useRef<THREE.Group>(null);
   const targetRotation = useRef({ x: 0, y: 0 });
+  const piecesRef = useRef<(THREE.Group | null)[]>([]);
+
+  const animState = useRef({
+    isAnimating: false,
+    axisIdx: 0,
+    axis: new THREE.Vector3(),
+    piecesToMove: [] as number[],
+    targetAngle: 0,
+    currentAngle: 0,
+    speed: 0,
+    pauseTimer: 2.5, // Wait for assembly to finish
+  });
 
   const tetraGeometry = useMemo(() => new THREE.TetrahedronGeometry(Math.sqrt(3)), []);
   const octaGeometry = useMemo(() => new THREE.OctahedronGeometry(2), []);
@@ -132,46 +153,113 @@ function PyraminxCore() {
     
     const time = state.clock.getElapsedTime();
     
-    // Auto rotation base
-    const autoRotY = time * 0.12;
-    const autoRotX = Math.sin(time * 0.5) * 0.1;
+    // 1. Auto rotation base + Mouse Parallax
+    const autoRotY = time * 0.4; // Faster continuous spin
+    const autoRotX = Math.sin(time * 1.5) * 0.2; // Faster, more pronounced tilt
     
-    // Parallax mouse interaction target (with easing)
-    // Pointer is typically -1 to 1
     const maxTilt = Math.PI / 8; // 22.5 degrees max influence
     targetRotation.current.x = THREE.MathUtils.lerp(targetRotation.current.x, state.pointer.y * maxTilt, delta * 3);
     targetRotation.current.y = THREE.MathUtils.lerp(targetRotation.current.y, state.pointer.x * maxTilt, delta * 3);
     
-    // Combine auto rotation and mouse interaction
     groupRef.current.rotation.y = autoRotY + targetRotation.current.y;
     groupRef.current.rotation.x = autoRotX + targetRotation.current.x;
     
-    // Gentle overall floating
     groupRef.current.position.y = Math.sin(time * 1.2) * 0.2;
+
+    // 2. Slice Twisting Logic (Solving animation)
+    if (time > 2.5) { // Wait for assembly to finish
+      if (!animState.current.isAnimating) {
+        animState.current.pauseTimer -= delta;
+
+        if (animState.current.pauseTimer <= 0) {
+          const axisIdx = Math.floor(Math.random() * 4);
+          const depthThreshold = Math.random() < 0.5 ? 4 : 0;
+          const direction = Math.random() < 0.5 ? 1 : -1;
+
+          const piecesToMove: number[] = [];
+          const unnormAxis = AXES_UNNORM[axisIdx];
+
+          piecesRef.current.forEach((piece, idx) => {
+            if (!piece) return;
+            const pos = piece.position.clone();
+            const dot = Math.round(pos.dot(unnormAxis));
+
+            if (dot > depthThreshold) {
+              piecesToMove.push(idx);
+            }
+          });
+
+          if (piecesToMove.length > 0) {
+            animState.current.isAnimating = true;
+            animState.current.axisIdx = axisIdx;
+            animState.current.axis.copy(AXES[axisIdx]);
+            animState.current.piecesToMove = piecesToMove;
+            animState.current.targetAngle = ((Math.PI * 2) / 3) * direction; // +/- 120 degrees
+            animState.current.currentAngle = 0;
+            animState.current.speed = 25.0; // Extremely fast, near-instant snapping
+          } else {
+            animState.current.pauseTimer = 0.2;
+          }
+        }
+      } else {
+        // Animate the slice
+        const step = animState.current.speed * delta;
+        const direction = Math.sign(animState.current.targetAngle);
+        animState.current.currentAngle += step * direction;
+
+        let finished = false;
+        let actualStep = step * direction;
+
+        if (
+          (direction === 1 && animState.current.currentAngle >= animState.current.targetAngle) ||
+          (direction === -1 && animState.current.currentAngle <= animState.current.targetAngle)
+        ) {
+          const overshoot = animState.current.currentAngle - animState.current.targetAngle;
+          actualStep -= overshoot;
+          finished = true;
+        }
+
+        _q.setFromAxisAngle(animState.current.axis, actualStep);
+
+        animState.current.piecesToMove.forEach(idx => {
+          const piece = piecesRef.current[idx];
+          if (!piece) return;
+          piece.position.applyQuaternion(_q);
+          piece.quaternion.premultiply(_q);
+        });
+
+        if (finished) {
+          animState.current.isAnimating = false;
+          animState.current.pauseTimer = 0.1 + Math.random() * 0.3; // Barely any pause between twists
+        }
+      }
+    }
   });
 
   return (
     <group ref={groupRef} scale={1.0}>
       {TETRA_VEC3.map((vec, idx) => (
-        <PyraminxPiece 
-          key={`tetra-${idx}`} 
-          geometry={tetraGeometry} 
-          material={material} 
-          targetPos={vec}
-          index={idx}
-          totalPieces={totalPieces}
-        />
+        <group key={`tetra-group-${idx}`} ref={(el) => { piecesRef.current[idx] = el; }} position={vec}>
+          <PyraminxPiece 
+            geometry={tetraGeometry} 
+            material={material} 
+            targetPos={vec}
+            index={idx}
+            totalPieces={totalPieces}
+          />
+        </group>
       ))}
 
       {OCTA_VEC3.map((vec, idx) => (
-        <PyraminxPiece 
-          key={`octa-${idx}`} 
-          geometry={octaGeometry} 
-          material={material} 
-          targetPos={vec}
-          index={TETRA_VEC3.length + idx}
-          totalPieces={totalPieces}
-        />
+        <group key={`octa-group-${idx}`} ref={(el) => { piecesRef.current[TETRA_VEC3.length + idx] = el; }} position={vec}>
+          <PyraminxPiece 
+            geometry={octaGeometry} 
+            material={material} 
+            targetPos={vec}
+            index={TETRA_VEC3.length + idx}
+            totalPieces={totalPieces}
+          />
+        </group>
       ))}
     </group>
   );
