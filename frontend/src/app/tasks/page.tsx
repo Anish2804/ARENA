@@ -212,7 +212,7 @@ export default function TasksPage() {
   return (
     <div className="flex flex-col space-y-5 relative animate-fade-in lg:h-[calc(100vh-160px)] lg:min-h-[600px]">
       {/* Header */}
-      <div className="flex justify-between items-end pb-5 border-b border-white/[0.06]">
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-end gap-4 pb-5 border-b border-white/[0.06] shrink-0">
         <div className="flex items-center gap-3">
           <button
             onClick={() => router.back()}
@@ -222,24 +222,24 @@ export default function TasksPage() {
             &lt;
           </button>
           <div>
-            <h1 className="text-[28px] font-semibold tracking-tight text-white/90">Tasks</h1>
-            <p className="text-[14px] text-white/35 mt-1">
+            <h1 className="text-[24px] sm:text-[28px] font-semibold tracking-tight text-white/90">Tasks</h1>
+            <p className="text-[13px] sm:text-[14px] text-white/35 mt-1">
               Monitor and inspect multi-agent task evaluations.
             </p>
           </div>
         </div>
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-3 w-full sm:w-auto">
           <button
             onClick={fetchTasks}
             disabled={isRefreshing}
-            className="inline-flex items-center gap-2 rounded-xl border border-white/8 bg-white/[0.04] px-4 py-2 text-[13px] font-medium text-white/50 transition-all hover:bg-white/[0.08] hover:text-white/80 disabled:opacity-50"
+            className="flex-1 sm:flex-none justify-center inline-flex items-center gap-2 rounded-xl border border-white/8 bg-white/[0.04] px-4 py-2 text-[13px] font-medium text-white/50 transition-all hover:bg-white/[0.08] hover:text-white/80 disabled:opacity-50"
           >
             <RefreshCw className={`w-3.5 h-3.5 ${isRefreshing ? "animate-spin" : ""}`} />
             Refresh
           </button>
           <button
             onClick={() => setIsModalOpen(true)}
-            className="inline-flex items-center gap-2 rounded-xl bg-white/[0.08] border border-white/10 px-4 py-2 text-[13px] font-medium text-white/70 transition-all hover:bg-white/[0.12] hover:text-white"
+            className="flex-1 sm:flex-none justify-center inline-flex items-center gap-2 rounded-xl bg-white/[0.08] border border-white/10 px-4 py-2 text-[13px] font-medium text-white/70 transition-all hover:bg-white/[0.12] hover:text-white"
           >
             <Plus className="w-3.5 h-3.5" />
             New Task
@@ -248,7 +248,7 @@ export default function TasksPage() {
       </div>
 
       {/* Master-Detail */}
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 items-start lg:h-full pb-4">
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 flex-1 lg:overflow-hidden pb-4">
         {/* Left: Task List */}
         <div className="lg:col-span-4 flex flex-col h-[400px] lg:h-full overflow-hidden rounded-xl border border-white/[0.06] bg-white/[0.015]">
           {/* Search */}

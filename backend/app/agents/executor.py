@@ -1,24 +1,44 @@
 import time
 import logging
+import os
 from typing import Dict, Any
-from groq import AsyncGroq
+import litellm
 from app.config.settings import settings
 
 logger = logging.getLogger("arena.executor")
 
-def get_groq_client() -> AsyncGroq:
-    api_key = settings.GROQ_API_KEY.strip().strip('"').strip("'")
-    if not api_key:
-        raise ValueError("GROQ_API_KEY is not configured in environment variables. Please set GROQ_API_KEY in Render Dashboard -> Environment.")
-    return AsyncGroq(api_key=api_key, timeout=60.0, max_retries=2)
+# Ensure env vars are set for litellm
+if settings.GROQ_API_KEY:
+    os.environ["GROQ_API_KEY"] = settings.GROQ_API_KEY
+if settings.GOOGLE_GEMINI_API_KEY:
+    os.environ["GEMINI_API_KEY"] = settings.GOOGLE_GEMINI_API_KEY
+if settings.OPENAI_API_KEY:
+    os.environ["OPENAI_API_KEY"] = settings.OPENAI_API_KEY
+if settings.ANTHROPIC_API_KEY:
+    os.environ["ANTHROPIC_API_KEY"] = settings.ANTHROPIC_API_KEY
 
 async def execute_agent(agent: Any, task_prompt: str) -> Dict[str, Any]:
     start_time = time.perf_counter()
     
-    if not settings.GROQ_API_KEY:
+    provider = getattr(agent, "provider", "groq")
+    model_name = getattr(agent, "model", "llama3-8b-8192")
+    
+    # Check if API key is configured
+    if provider == "groq" and not settings.GROQ_API_KEY:
+        missing_key = "GROQ_API_KEY"
+    elif provider == "gemini" and not settings.GOOGLE_GEMINI_API_KEY:
+        missing_key = "GOOGLE_GEMINI_API_KEY"
+    elif provider == "openai" and not settings.OPENAI_API_KEY:
+        missing_key = "OPENAI_API_KEY"
+    elif provider == "anthropic" and not settings.ANTHROPIC_API_KEY:
+        missing_key = "ANTHROPIC_API_KEY"
+    else:
+        missing_key = None
+        
+    if missing_key:
         return {
             "status": "failed",
-            "response": "Execution failed: GROQ_API_KEY is missing in backend environment variables. Please configure GROQ_API_KEY in Render Dashboard -> Environment.",
+            "response": f"Execution failed: {missing_key} is missing in backend environment variables. Please configure it.",
             "input_tokens": 0,
             "output_tokens": 0,
             "total_tokens": 0,
@@ -30,10 +50,19 @@ async def execute_agent(agent: Any, task_prompt: str) -> Dict[str, Any]:
     temperature = getattr(agent, "temperature", 0.7)
     max_tokens = getattr(agent, "max_tokens", 1024)
     
+    # Prefix provider for litellm
+    if provider == "gemini":
+        litellm_model = f"gemini/{model_name}"
+    elif provider == "groq":
+        litellm_model = f"groq/{model_name}"
+    elif provider == "anthropic":
+        litellm_model = f"anthropic/{model_name}"
+    else:
+        litellm_model = model_name
+        
     try:
-        client = get_groq_client()
-        completion = await client.chat.completions.create(
-            model=agent.model,
+        completion = await litellm.acompletion(
+            model=litellm_model,
             messages=[
                 {"role": "system", "content": agent.system_prompt},
                 {"role": "user", "content": task_prompt}
@@ -51,9 +80,11 @@ async def execute_agent(agent: Any, task_prompt: str) -> Dict[str, Any]:
         output_tokens = completion.usage.completion_tokens if completion.usage else 0
         total_tokens = completion.usage.total_tokens if completion.usage else (input_tokens + output_tokens)
         
-        # Token cost estimation for openai/gpt-oss-20b on Groq
-        # $0.15 per 1M prompt tokens, $0.60 per 1M completion tokens
-        estimated_cost = (input_tokens / 1_000_000 * 0.15) + (output_tokens / 1_000_000 * 0.60)
+        try:
+            estimated_cost = litellm.completion_cost(completion_response=completion)
+        except Exception:
+            # Fallback estimation
+            estimated_cost = (input_tokens / 1_000_000 * 0.15) + (output_tokens / 1_000_000 * 0.60)
         
         return {
             "status": "completed",
@@ -68,9 +99,6 @@ async def execute_agent(agent: Any, task_prompt: str) -> Dict[str, Any]:
         end_time = time.perf_counter()
         latency_ms = (end_time - start_time) * 1000
         error_msg = str(e)
-        # Redact any accidental credential leak from exception message
-        if settings.GROQ_API_KEY and settings.GROQ_API_KEY in error_msg:
-            error_msg = error_msg.replace(settings.GROQ_API_KEY, "[REDACTED]")
             
         logger.error(f"Error executing agent {getattr(agent, 'name', 'unknown')}: {error_msg}")
         return {

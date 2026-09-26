@@ -33,9 +33,10 @@ async def _log_activity(db: AsyncSession, event_type: str, message: str, task_id
         logger.warning(f"Could not log activity event: {e}")
 
 class AgentRuntimePayload:
-    def __init__(self, name: str, model: str, system_prompt: str, temperature: float = 0.7, max_tokens: int = 1024):
+    def __init__(self, name: str, model: str, provider: str, system_prompt: str, temperature: float = 0.7, max_tokens: int = 1024):
         self.name = name
         self.model = model
+        self.provider = provider
         self.system_prompt = system_prompt
         self.temperature = temperature
         self.max_tokens = max_tokens
@@ -88,6 +89,7 @@ async def process_task(task_id: str, agent_ids: list[str]):
                     "agent_name": agent.name,
                     "agent_role": agent.role,
                     "model": agent.model,
+                    "provider": agent.provider,
                     "system_prompt": agent.system_prompt,
                     "temperature": profile["temperature"],
                     "max_tokens": profile["max_tokens"]
@@ -102,6 +104,7 @@ async def process_task(task_id: str, agent_ids: list[str]):
                 agent_payload = AgentRuntimePayload(
                     name=agent_info["agent_name"],
                     model=agent_info["model"],
+                    provider=agent_info["provider"],
                     system_prompt=agent_info["system_prompt"],
                     temperature=agent_info["temperature"],
                     max_tokens=agent_info["max_tokens"]
@@ -167,6 +170,10 @@ async def process_task(task_id: str, agent_ids: list[str]):
                     run_db.total_tokens = exec_result.get("total_tokens", 0)
                     run_db.latency_ms = exec_result.get("latency_ms", 0.0)
                     run_db.estimated_cost = exec_result.get("estimated_cost", 0.0)
+                    
+                    # Store model and provider for UI/analytics
+                    run_db.model = next((r["model"] for r in runs_data if r["run_id"] == run_id), None)
+                    run_db.provider = next((r["provider"] for r in runs_data if r["run_id"] == run_id), None)
 
                 if exec_result.get("status") == "completed" and eval_result:
                     any_success = True

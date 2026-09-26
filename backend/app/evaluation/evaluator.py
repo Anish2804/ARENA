@@ -1,16 +1,9 @@
 import json
 import math
 import logging
-from groq import AsyncGroq
 from app.config.settings import settings
 
 logger = logging.getLogger("arena.evaluator")
-
-def get_evaluator_client() -> AsyncGroq:
-    api_key = settings.GROQ_API_KEY.strip().strip('"').strip("'")
-    if not api_key:
-        raise ValueError("GROQ_API_KEY is not configured in environment variables.")
-    return AsyncGroq(api_key=api_key, timeout=60.0, max_retries=2)
 
 EVALUATOR_PROMPT = """
 You are an expert evaluator. Evaluate the agent's response to the given task.
@@ -44,18 +37,22 @@ def _clean_numeric(value, default: float = 0.0) -> float:
         return default
 
 async def evaluate_response(task_prompt: str, agent_response: str) -> dict:
-    if not settings.GROQ_API_KEY:
+    if not settings.GROQ_API_KEY and not settings.OPENAI_API_KEY:
         return {
             "quality_score": 0.0,
             "accuracy_score": 0.0,
-            "evaluator_feedback": "Evaluation error: GROQ_API_KEY is not configured in backend environment variables.",
+            "evaluator_feedback": "Evaluation error: No suitable API key configured for evaluator.",
             "decision": "rejected"
         }
 
     try:
-        client = get_evaluator_client()
-        completion = await client.chat.completions.create(
-            model=settings.LLM_MODEL,
+        import litellm
+        
+        # Use a reliable evaluator model based on available keys
+        eval_model = "groq/llama3-70b-8192" if settings.GROQ_API_KEY else "openai/gpt-4o"
+        
+        completion = await litellm.acompletion(
+            model=eval_model,
             messages=[
                 {"role": "system", "content": EVALUATOR_PROMPT},
                 {"role": "user", "content": f"Task: {task_prompt}\n\nAgent Response:\n{agent_response}"}
@@ -90,8 +87,6 @@ async def evaluate_response(task_prompt: str, agent_response: str) -> dict:
         }
     except Exception as e:
         error_msg = str(e)
-        if settings.GROQ_API_KEY and settings.GROQ_API_KEY in error_msg:
-            error_msg = error_msg.replace(settings.GROQ_API_KEY, "[REDACTED]")
             
         logger.error(f"Evaluation error: {error_msg}")
         return {

@@ -8,6 +8,7 @@ class AgentBase(BaseModel):
     role: str
     description: str
     model: str
+    provider: str = "groq"
     system_prompt: str
     status: str = "active"
 
