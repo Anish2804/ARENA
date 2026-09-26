@@ -4,14 +4,16 @@ import { useState, useEffect } from "react";
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { motion, useScroll, useMotionValueEvent } from "framer-motion";
+import { motion, useScroll, useMotionValueEvent, AnimatePresence } from "framer-motion";
 import Image from "next/image";
+import { Menu, X } from "lucide-react";
 
 export function Header() {
   const pathname = usePathname();
   const { scrollY } = useScroll();
   const [hidden, setHidden] = useState(false);
   const [isLoggedIn, setIsLoggedIn] = useState(false);
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect
@@ -64,7 +66,7 @@ export function Header() {
         </div>
 
         {/* Right Actions */}
-        <div className="flex items-center gap-6">
+        <div className="flex items-center gap-4 md:gap-6">
 
           
           {!isLoggedIn ? (
@@ -77,7 +79,7 @@ export function Header() {
             </div>
           )}
 
-          <Link href="/tasks">
+          <Link href="/tasks" className="hidden sm:block">
             <button className="relative inline-flex h-9 overflow-hidden rounded-full p-[1px] focus:outline-none focus:ring-2 focus:ring-emerald-400 focus:ring-offset-2 focus:ring-offset-black">
               <span className="absolute inset-[-1000%] animate-[spin_2s_linear_infinite] bg-[conic-gradient(from_90deg_at_50%_50%,#E2CBFF_0%,#393BB2_50%,#E2CBFF_100%)]" />
               <span className="inline-flex h-full w-full cursor-pointer items-center justify-center rounded-full bg-black px-4 py-1 text-[13px] font-medium text-white backdrop-blur-3xl transition-colors hover:bg-neutral-900">
@@ -85,8 +87,49 @@ export function Header() {
               </span>
             </button>
           </Link>
+
+          {/* Mobile Menu Toggle */}
+          <button 
+            className="md:hidden p-2 text-white/70 hover:text-white"
+            onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+          >
+            {mobileMenuOpen ? <X size={20} /> : <Menu size={20} />}
+          </button>
         </div>
       </div>
+
+      {/* Mobile Menu Dropdown */}
+      <AnimatePresence>
+        {mobileMenuOpen && (
+          <motion.div
+            initial={{ opacity: 0, y: -10 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -10 }}
+            className="absolute top-[70px] left-0 w-full bg-black/90 backdrop-blur-xl border border-white/10 rounded-2xl p-4 flex flex-col gap-4 shadow-2xl"
+          >
+            {isLoggedIn ? (
+              <>
+                <Link href="/tasks" onClick={() => setMobileMenuOpen(false)} className={`text-[15px] font-medium p-2 rounded-lg ${pathname.startsWith('/tasks') ? 'bg-white/10 text-white' : 'text-white/60 hover:text-white hover:bg-white/5'}`}>
+                  Tasks
+                </Link>
+                <Link href="/agents" onClick={() => setMobileMenuOpen(false)} className={`text-[15px] font-medium p-2 rounded-lg ${pathname.startsWith('/agents') ? 'bg-white/10 text-white' : 'text-white/60 hover:text-white hover:bg-white/5'}`}>
+                  Agents
+                </Link>
+                <Link href="/leaderboard" onClick={() => setMobileMenuOpen(false)} className={`text-[15px] font-medium p-2 rounded-lg ${pathname.startsWith('/leaderboard') ? 'bg-white/10 text-white' : 'text-white/60 hover:text-white hover:bg-white/5'}`}>
+                  Leaderboard
+                </Link>
+              </>
+            ) : (
+              <Link href="/login" onClick={() => setMobileMenuOpen(false)} className="text-[15px] font-medium p-2 rounded-lg text-white/60 hover:text-white hover:bg-white/5">
+                Log in
+              </Link>
+            )}
+            <Link href="/tasks" onClick={() => setMobileMenuOpen(false)} className="mt-2 text-center p-2 rounded-lg bg-emerald-500/20 text-emerald-300 font-medium">
+              Get started
+            </Link>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </motion.header>
   );
 }

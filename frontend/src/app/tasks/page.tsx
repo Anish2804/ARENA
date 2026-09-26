@@ -210,7 +210,7 @@ export default function TasksPage() {
   };
 
   return (
-    <div className="h-[calc(100vh-160px)] min-h-[600px] flex flex-col space-y-5 relative animate-fade-in">
+    <div className="flex flex-col space-y-5 relative animate-fade-in lg:h-[calc(100vh-160px)] lg:min-h-[600px]">
       {/* Header */}
       <div className="flex justify-between items-end pb-5 border-b border-white/[0.06]">
         <div className="flex items-center gap-3">
@@ -248,9 +248,9 @@ export default function TasksPage() {
       </div>
 
       {/* Master-Detail */}
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 items-start h-full pb-4">
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 items-start lg:h-full pb-4">
         {/* Left: Task List */}
-        <div className="lg:col-span-4 flex flex-col h-full overflow-hidden rounded-xl border border-white/[0.06] bg-white/[0.015]">
+        <div className="lg:col-span-4 flex flex-col h-[400px] lg:h-full overflow-hidden rounded-xl border border-white/[0.06] bg-white/[0.015]">
           {/* Search */}
           <div className="p-4 border-b border-white/[0.06] space-y-3">
             <div className="relative">
@@ -332,7 +332,7 @@ export default function TasksPage() {
         </div>
 
         {/* Right: Detail Panel */}
-        <div className="lg:col-span-8 h-full flex flex-col overflow-hidden rounded-xl border border-white/[0.06] bg-white/[0.015]">
+        <div className="lg:col-span-8 h-[600px] lg:h-full flex flex-col overflow-hidden rounded-xl border border-white/[0.06] bg-white/[0.015]">
           {!selectedTask ? (
             <div className="h-full flex flex-col items-center justify-center text-center p-12 space-y-4">
               <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-white/[0.04] border border-white/[0.06]">

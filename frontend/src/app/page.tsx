@@ -114,9 +114,8 @@ export default function Dashboard() {
             <span className="text-[13px] text-[#888] ml-1">›</span>
           </div>
           
-          <h1 className="text-[64px] sm:text-[88px] font-serif tracking-tight text-[#ededed] leading-[1] mb-6 relative z-20">
-            Agents for <br/> 
-            developers
+          <h1 className="text-[48px] sm:text-[64px] lg:text-[88px] font-serif tracking-tight text-[#ededed] leading-[1.1] sm:leading-[1] mb-6 relative z-20">
+            Agents for <br className="hidden sm:block"/> developers
           </h1>
           
           <p className="text-[18px] sm:text-[20px] text-[#888] mb-10 leading-relaxed relative z-20 max-w-xl">
