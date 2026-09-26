@@ -1,66 +1,70 @@
 "use client";
 
-import React from "react";
-import { usePathname } from "next/navigation";
-import { Menu, Activity, Sparkles, Terminal } from "lucide-react";
+import { useState } from "react";
+import { Bell, Search, Command } from "lucide-react";
 import Link from "next/link";
+import { usePathname } from "next/navigation";
+import { motion, useScroll, useMotionValueEvent } from "framer-motion";
+import Image from "next/image";
 
-interface HeaderProps {
-  onOpenMobile: () => void;
-}
-
-export function Header({ onOpenMobile }: HeaderProps) {
+export function Header() {
   const pathname = usePathname();
+  const { scrollY } = useScroll();
+  const [hidden, setHidden] = useState(false);
 
-  const getPageTitle = () => {
-    switch (pathname) {
-      case "/":
-        return "Command Center";
-      case "/tasks":
-        return "Tasks & Evaluations";
-      case "/agents":
-        return "Agent Roster";
-      case "/leaderboard":
-        return "Benchmark Leaderboard";
-      default:
-        return "Command Center";
+  useMotionValueEvent(scrollY, "change", (latest) => {
+    const previous = scrollY.getPrevious();
+    if (latest > 100 && latest > (previous ?? 0)) {
+      setHidden(true);
+    } else {
+      setHidden(false);
     }
-  };
+  });
 
   return (
-    <header className="sticky top-0 z-30 h-14 bg-[#08090d]/80 backdrop-blur-md border-b border-white/[0.08] px-4 md:px-8 flex items-center justify-between">
-      {/* Left: Mobile Toggle + Breadcrumb */}
-      <div className="flex items-center gap-3">
-        <button
-          onClick={onOpenMobile}
-          className="p-1.5 rounded-md text-zinc-400 hover:text-zinc-200 hover:bg-white/[0.05] md:hidden transition-colors"
-          aria-label="Open sidebar"
-        >
-          <Menu className="w-4 h-4" />
-        </button>
+    <motion.header 
+      initial={{ y: -100, opacity: 0 }}
+      animate={{ y: hidden ? -100 : 0, opacity: hidden ? 0 : 1 }}
+      transition={{ type: "spring", stiffness: 100, damping: 20 }}
+      className="fixed top-4 left-1/2 -translate-x-1/2 w-[95%] max-w-[1200px] h-[60px] flex items-center justify-between px-6 md:px-8 border border-[#222] bg-black/70 backdrop-blur-md rounded-full z-50 shadow-2xl shadow-black/50"
+    >
+      <div className="w-full flex items-center justify-between">
+        {/* Left Logo & Nav */}
+        <div className="flex items-center gap-10">
+          <Link href="/" className="text-[#ededed] font-semibold text-[15px] tracking-tight hover:opacity-80 transition-opacity flex items-center gap-2">
+            <div className="w-8 h-8 relative rounded-full overflow-hidden border border-[#333]">
+              <Image src="/ganesha_logo.png" alt="ARENA Logo" fill className="object-cover" />
+            </div>
+            ARENA
+          </Link>
+          <div className="hidden md:flex items-center gap-8 text-[14px] font-medium text-[#888]">
+            <Link href="/tasks" className={`hover:text-[#ededed] transition-colors ${pathname.startsWith('/tasks') ? 'text-[#ededed]' : ''}`}>
+              Tasks
+            </Link>
+            <Link href="/agents" className={`hover:text-[#ededed] transition-colors ${pathname.startsWith('/agents') ? 'text-[#ededed]' : ''}`}>
+              Agents
+            </Link>
+            <Link href="/leaderboard" className={`hover:text-[#ededed] transition-colors ${pathname.startsWith('/leaderboard') ? 'text-[#ededed]' : ''}`}>
+              Leaderboard
+            </Link>
+          </div>
+        </div>
 
-        <div className="flex items-center gap-2 text-xs font-mono">
-          <span className="text-zinc-500">ARENA</span>
-          <span className="text-zinc-600">/</span>
-          <span className="text-zinc-200 font-medium">{getPageTitle()}</span>
+        {/* Right Actions */}
+        <div className="flex items-center gap-6">
+          <Link href="/login" className="text-[14px] font-medium text-[#888] hover:text-[#ededed] transition-colors hidden sm:block">
+            Log in
+          </Link>
+          <Link href="/tasks">
+            <button className="relative inline-flex h-9 overflow-hidden rounded-full p-[1px] focus:outline-none focus:ring-2 focus:ring-emerald-400 focus:ring-offset-2 focus:ring-offset-black">
+              <span className="absolute inset-[-1000%] animate-[spin_2s_linear_infinite] bg-[conic-gradient(from_90deg_at_50%_50%,#E2CBFF_0%,#393BB2_50%,#E2CBFF_100%)]" />
+              <span className="inline-flex h-full w-full cursor-pointer items-center justify-center rounded-full bg-black px-4 py-1 text-[13px] font-medium text-white backdrop-blur-3xl transition-colors hover:bg-neutral-900">
+                Get started
+              </span>
+            </button>
+          </Link>
         </div>
       </div>
-
-      {/* Right: Quick Action & Live Status */}
-      <div className="flex items-center gap-3">
-        <div className="hidden sm:flex items-center gap-2 px-2.5 py-1 rounded-full bg-white/[0.03] border border-white/[0.06] text-[11px] font-mono text-zinc-400">
-          <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
-          <span>Groq Cluster Online</span>
-        </div>
-
-        <Link
-          href="/"
-          className="inline-flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-md bg-blue-600 hover:bg-blue-500 text-white transition-all shadow-xs"
-        >
-          <Sparkles className="w-3.5 h-3.5" />
-          <span className="hidden xs:inline">New Task</span>
-        </Link>
-      </div>
-    </header>
+    </motion.header>
   );
 }

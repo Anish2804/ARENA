@@ -1,511 +1,228 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import Link from "next/link";
 import { API_BASE_URL } from "@/lib/api";
 import { MetricCard } from "@/components/ui/MetricCard";
-import { Badge, StatusBadge } from "@/components/ui/Badge";
-import {
-  Sparkles,
-  Bot,
-  Activity,
-  ArrowRight,
-  Clock,
-  DollarSign,
-  Award,
-  Terminal,
-  Play,
-  CheckCircle2,
-  AlertCircle
-} from "lucide-react";
+import { Badge } from "@/components/ui/Badge";
+import { Bot, Cpu, Zap, Activity, Code2, Network, ArrowRight } from "lucide-react";
+import Link from "next/link";
+import { motion, useScroll, useTransform } from "framer-motion";
+import { GalaxyBackground } from "@/components/GalaxyBackground";
+import Pyraminx from "@/components/Pyraminx";
 
-interface Agent {
-  id: string;
-  name: string;
-  role: string;
+interface DashboardStats {
+  total_agents: number;
+  total_tasks: number;
+  active_tasks: number;
+  avg_score: number;
 }
 
-interface ActivityEvent {
-  id: string;
-  event_type: string;
-  message: string;
-  created_at: string;
-}
-
-interface TaskItem {
-  id: string;
-  title: string;
-  prompt: string;
-  status: string;
-  created_at: string;
-  completed_at?: string | null;
-  runs?: any[];
-}
-
-export default function CommandCenter() {
-  const [metrics, setMetrics] = useState({
-    agentsOnline: 4,
-    tasksRunning: 0,
-    avgQuality: 0,
-    avgCost: 0
+export default function Dashboard() {
+  const [stats, setStats] = useState<DashboardStats>({
+    total_agents: 0,
+    total_tasks: 0,
+    active_tasks: 0,
+    avg_score: 0,
   });
 
-  const [agents, setAgents] = useState<Agent[]>([]);
-  const [selectedAgentIds, setSelectedAgentIds] = useState<string[]>([]);
-  const [taskPrompt, setTaskPrompt] = useState("");
-  const [isDispatching, setIsDispatching] = useState(false);
-  const [activeTask, setActiveTask] = useState<TaskItem | null>(null);
-  const [recentTasks, setRecentTasks] = useState<TaskItem[]>([]);
-  const [recentActivities, setRecentActivities] = useState<ActivityEvent[]>([]);
-
-  const samplePrompts = [
-    "Compare Byzantine fault tolerance vs fail-stop architectures for autonomous vehicle actuators.",
-    "Evaluate NVIDIA's enterprise competitive moat and hardware supply constraints over the next 24 months.",
-    "Design a resilient zero-trust API gateway architecture for high-frequency algorithmic trading."
-  ];
-
-  // Fetch initial dashboard telemetry
-  const loadData = async () => {
-    try {
-      const [agentsRes, leaderboardRes, tasksRes, activityRes] = await Promise.all([
-        fetch(`${API_BASE_URL}/api/agents`).then((r) => (r.ok ? r.json() : [])),
-        fetch(`${API_BASE_URL}/api/leaderboard`).then((r) => (r.ok ? r.json() : [])),
-        fetch(`${API_BASE_URL}/api/tasks`).then((r) => (r.ok ? r.json() : [])),
-        fetch(`${API_BASE_URL}/api/activity?limit=8`).then((r) => (r.ok ? r.json() : []))
-      ]);
-
-      if (Array.isArray(agentsRes) && agentsRes.length > 0) {
-        setAgents(agentsRes);
-        // Default to all agents if not yet selected
-        setSelectedAgentIds((prev) => (prev.length === 0 ? agentsRes.map((a: Agent) => a.id) : prev));
-      }
-
-      if (Array.isArray(tasksRes)) {
-        setRecentTasks(tasksRes.slice(0, 5));
-        const activeCount = tasksRes.filter(
-          (t: TaskItem) => t.status === "running" || t.status === "queued"
-        ).length;
-        setMetrics((prev) => ({ ...prev, tasksRunning: activeCount }));
-      }
-
-      const completedEvals = Array.isArray(leaderboardRes)
-        ? leaderboardRes.filter((item: any) => item.total_tasks > 0)
-        : [];
-
-      const avgQuality =
-        completedEvals.length > 0
-          ? completedEvals.reduce((acc: number, val: any) => acc + (val.quality || 0), 0) /
-            completedEvals.length
-          : 0;
-
-      const avgCost =
-        completedEvals.length > 0
-          ? completedEvals.reduce((acc: number, val: any) => acc + (val.cost || 0), 0) /
-            completedEvals.length
-          : 0;
-
-      setMetrics({
-        agentsOnline: agentsRes.length || 4,
-        tasksRunning: Array.isArray(tasksRes)
-          ? tasksRes.filter((t: any) => t.status === "running" || t.status === "queued").length
-          : 0,
-        avgQuality: parseFloat(avgQuality.toFixed(1)),
-        avgCost: parseFloat(avgCost.toFixed(4))
-      });
-
-      if (Array.isArray(activityRes)) {
-        setRecentActivities(activityRes);
-      }
-    } catch (e) {
-      console.error("Error loading dashboard data", e);
-    }
-  };
+  const { scrollYProgress } = useScroll();
+  const y = useTransform(scrollYProgress, [0, 1], [0, -50]);
+  const opacity = useTransform(scrollYProgress, [0, 0.2], [1, 0]);
 
   useEffect(() => {
-    loadData();
-    const interval = setInterval(loadData, 15000);
+    const fetchStats = async () => {
+      try {
+        const [agentsRes, tasksRes] = await Promise.all([
+          fetch(`${API_BASE_URL}/api/agents`),
+          fetch(`${API_BASE_URL}/api/tasks`)
+        ]);
+
+        if (agentsRes.ok && tasksRes.ok) {
+          const agents = await agentsRes.json();
+          const tasks = await tasksRes.json();
+          
+          const active = tasks.filter((t: any) => t.status === "running" || t.status === "queued").length;
+          
+          let totalScore = 0;
+          let evaluations = 0;
+          tasks.forEach((t: any) => {
+            if (t.runs) {
+              t.runs.forEach((r: any) => {
+                if (r.evaluation && r.evaluation.final_score !== null) {
+                  totalScore += r.evaluation.final_score;
+                  evaluations++;
+                }
+              });
+            }
+          });
+
+          setStats({
+            total_agents: agents.length,
+            total_tasks: tasks.length,
+            active_tasks: active,
+            avg_score: evaluations > 0 ? totalScore / evaluations : 0
+          });
+        }
+      } catch (e) {
+        console.error("Failed to fetch dashboard stats", e);
+      }
+    };
+
+    fetchStats();
+    const interval = setInterval(fetchStats, 15000);
     return () => clearInterval(interval);
   }, []);
 
-  // Poll active task status if currently executing
-  useEffect(() => {
-    if (!activeTask || activeTask.status === "completed" || activeTask.status === "failed") return;
-
-    const taskPoll = setInterval(async () => {
-      try {
-        const res = await fetch(`${API_BASE_URL}/api/tasks/${activeTask.id}`);
-        if (res.ok) {
-          const updated = await res.json();
-          setActiveTask(updated);
-          if (updated.status === "completed" || updated.status === "failed") {
-            clearInterval(taskPoll);
-            loadData();
-          }
-        }
-      } catch (e) {
-        console.error("Error polling active task", e);
-      }
-    }, 5000);
-
-    return () => clearInterval(taskPoll);
-  }, [activeTask]);
-
-  const toggleAgent = (agentId: string) => {
-    setSelectedAgentIds((prev) =>
-      prev.includes(agentId)
-        ? prev.length > 1
-          ? prev.filter((id) => id !== agentId)
-          : prev // keep at least 1
-        : [...prev, agentId]
-    );
-  };
-
-  const handleRunTask = async () => {
-    if (!taskPrompt.trim() || selectedAgentIds.length === 0) return;
-    setIsDispatching(true);
-
-    try {
-      const res = await fetch(`${API_BASE_URL}/api/tasks`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          title: taskPrompt.slice(0, 60) + (taskPrompt.length > 60 ? "..." : ""),
-          prompt: taskPrompt,
-          agent_ids: selectedAgentIds
-        })
-      });
-
-      if (res.ok) {
-        const data = await res.json();
-        setActiveTask(data);
-        setTaskPrompt("");
-        loadData();
-      }
-    } catch (e) {
-      console.error("Failed to dispatch task", e);
-    } finally {
-      setIsDispatching(false);
+  // Framer Motion Variants
+  const containerVariants = {
+    hidden: { opacity: 0 },
+    visible: {
+      opacity: 1,
+      transition: { staggerChildren: 0.1, delayChildren: 0.2 }
     }
   };
 
+  const itemVariants = {
+    hidden: { opacity: 0, y: 20 },
+    visible: { opacity: 1, y: 0, transition: { type: "spring" as const, stiffness: 100, damping: 20 } }
+  };
+
   return (
-    <div className="space-y-6">
-      {/* Top Page Header (Vercel-style precision) */}
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-end gap-3 pb-2 border-b border-white/[0.08]">
-        <div>
-          <div className="flex items-center gap-2 mb-1">
-            <span className="text-[11px] uppercase font-mono tracking-widest text-zinc-400">
-              Orchestration & Evaluation
-            </span>
-            <span className="text-zinc-600">•</span>
-            <span className="text-[11px] font-mono text-blue-400">Multi-Agent</span>
+    <div className="pb-32 relative">
+      {/* Hero Section (Resend Landing Page Style) */}
+      <motion.div 
+        className="min-h-[calc(100vh-120px)] flex flex-col lg:flex-row items-center justify-between relative py-20 z-10 w-full"
+        style={{ y, opacity }}
+      >
+        <motion.div
+          initial={{ opacity: 0, scale: 0.9 }}
+          animate={{ opacity: 1, scale: 1 }}
+          transition={{ duration: 1, ease: "easeOut" }}
+          className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] bg-white/[0.01] rounded-full blur-3xl pointer-events-none"
+        />
+
+        {/* Left Content */}
+        <motion.div
+          initial={{ opacity: 0, y: 30 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.8, ease: "easeOut" }}
+          className="relative z-10 flex-1 lg:pr-10 text-left w-full max-w-2xl"
+        >
+          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full border border-[#222] hover:border-[#444] transition-colors bg-[#111] mb-8 cursor-pointer">
+            <span className="text-[13px] font-medium text-[#ededed]">Join us at ARENA Forward</span>
+            <span className="text-[13px] text-[#888] ml-1">›</span>
           </div>
-          <h1 className="text-2xl font-bold tracking-tight text-zinc-100">
-            Command Center
+          
+          <h1 className="text-[64px] sm:text-[88px] font-serif tracking-tight text-[#ededed] leading-[1] mb-6 relative z-20">
+            Agents for <br/> 
+            developers
           </h1>
-        </div>
+          
+          <p className="text-[18px] sm:text-[20px] text-[#888] mb-10 leading-relaxed relative z-20 max-w-xl">
+            The best way to orchestrate multi-agent workflows instead of complex monolithic scripts. Deliver intelligent automation at scale.
+          </p>
 
-        <div className="flex items-center gap-2 text-xs font-mono text-zinc-400">
-          <span className="w-2 h-2 rounded-full bg-emerald-400" />
-          <span>Cluster Ready: 4 Autonomous Workers</span>
-        </div>
-      </div>
-
-      {/* Primary Metrics Grid (Linear-style dense cards) */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
-        <MetricCard
-          label="Agents Ready"
-          value={metrics.agentsOnline}
-          subtext="100% Cluster Capacity"
-          icon={<Bot className="w-4 h-4 text-blue-400" />}
-        />
-        <MetricCard
-          label="Active Tasks"
-          value={metrics.tasksRunning}
-          subtext={metrics.tasksRunning > 0 ? "Executing concurrent runs" : "Standby for dispatch"}
-          valueColor={metrics.tasksRunning > 0 ? "text-amber-400" : "text-zinc-100"}
-          icon={<Activity className="w-4 h-4 text-amber-400" />}
-        />
-        <MetricCard
-          label="Avg Benchmark"
-          value={metrics.avgQuality > 0 ? `${metrics.avgQuality}%` : "—"}
-          subtext="Evaluator Quality Score"
-          valueColor="text-emerald-400"
-          icon={<Award className="w-4 h-4 text-emerald-400" />}
-        />
-        <MetricCard
-          label="Cost / Execution"
-          value={metrics.avgCost > 0 ? `$${metrics.avgCost}` : "—"}
-          subtext="Groq Token Efficiency"
-          icon={<DollarSign className="w-4 h-4 text-zinc-400" />}
-        />
-      </div>
-
-      {/* Task Dispatch Console (Linear/Vercel command interface) */}
-      <div className="bg-[#0e1017] border border-white/[0.08] rounded-lg p-5 space-y-4">
-        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2 pb-3 border-b border-white/[0.06]">
-          <div className="flex items-center gap-2">
-            <Terminal className="w-4 h-4 text-blue-400" />
-            <span className="text-xs font-mono uppercase tracking-wider font-semibold text-zinc-200">
-              Dispatch Multi-Agent Task
-            </span>
-          </div>
-
-          <div className="flex items-center gap-2 text-[11px] font-mono text-zinc-400">
-            <span className="px-2 py-0.5 rounded bg-white/[0.04] border border-white/[0.08]">
-              Model: openai/gpt-oss-20b
-            </span>
-          </div>
-        </div>
-
-        {/* Input Area */}
-        <div className="space-y-3">
-          <textarea
-            value={taskPrompt}
-            onChange={(e) => setTaskPrompt(e.target.value)}
-            onKeyDown={(e) => {
-              if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) {
-                e.preventDefault();
-                handleRunTask();
-              }
-            }}
-            placeholder="Describe the research, evaluation, or analysis task to benchmark across agents..."
-            className="w-full bg-[#08090d] border border-white/[0.08] focus:border-blue-500/60 rounded-md p-3 text-sm text-zinc-100 placeholder-zinc-500 focus:outline-none focus:ring-1 focus:ring-blue-500/40 resize-none min-h-[100px] font-sans transition-colors"
-          />
-
-          {/* Sample Prompt Pills */}
-          <div className="flex flex-wrap items-center gap-1.5 text-xs text-zinc-400">
-            <span className="text-[11px] font-mono text-zinc-500">Quick Prompts:</span>
-            {samplePrompts.map((prompt, idx) => (
-              <button
-                key={idx}
-                type="button"
-                onClick={() => setTaskPrompt(prompt)}
-                className="text-[11px] px-2 py-1 rounded bg-white/[0.03] hover:bg-white/[0.07] border border-white/[0.06] hover:border-white/[0.12] text-zinc-300 transition-colors truncate max-w-[260px]"
-                title={prompt}
-              >
-                {prompt}
+          <div className="flex items-center gap-6 relative z-20">
+            <Link href="/tasks">
+              <button className="relative inline-flex h-12 overflow-hidden rounded-full p-[1px] focus:outline-none focus:ring-2 focus:ring-emerald-400 focus:ring-offset-2 focus:ring-offset-black">
+                <span className="absolute inset-[-1000%] animate-[spin_2s_linear_infinite] bg-[conic-gradient(from_90deg_at_50%_50%,#E2CBFF_0%,#393BB2_50%,#E2CBFF_100%)]" />
+                <span className="inline-flex h-full w-full cursor-pointer items-center justify-center rounded-full bg-black px-8 py-2 text-[15px] font-medium text-white backdrop-blur-3xl transition-colors hover:bg-neutral-900">
+                  Get started
+                </span>
               </button>
-            ))}
-          </div>
-        </div>
-
-        {/* Agent Selectors & Action Bar */}
-        <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 pt-3 border-t border-white/[0.06]">
-          {/* Target Agents Selector */}
-          <div className="flex flex-wrap items-center gap-2">
-            <span className="text-[11px] font-mono text-zinc-400 mr-1">Target Agents:</span>
-            {agents.map((agent) => {
-              const isSelected = selectedAgentIds.includes(agent.id);
-              return (
-                <button
-                  key={agent.id}
-                  type="button"
-                  onClick={() => toggleAgent(agent.id)}
-                  className={`text-xs px-2.5 py-1 rounded-md border font-mono transition-all flex items-center gap-1.5 ${
-                    isSelected
-                      ? "bg-blue-500/10 border-blue-500/30 text-blue-300 shadow-xs"
-                      : "bg-white/[0.02] border-white/[0.06] text-zinc-500 hover:text-zinc-300"
-                  }`}
-                >
-                  <span
-                    className={`w-1.5 h-1.5 rounded-full ${
-                      isSelected ? "bg-blue-400" : "bg-zinc-600"
-                    }`}
-                  />
-                  <span>{agent.name}</span>
-                </button>
-              );
-            })}
-          </div>
-
-          {/* Dispatch Button */}
-          <div className="flex items-center gap-3 w-full md:w-auto justify-end">
-            <span className="hidden sm:inline text-[11px] font-mono text-zinc-500">
-              Press ⌘+Enter
-            </span>
-            <button
-              onClick={handleRunTask}
-              disabled={isDispatching || !taskPrompt.trim() || selectedAgentIds.length === 0}
-              className="w-full md:w-auto inline-flex items-center justify-center gap-2 px-5 py-2 text-xs font-semibold rounded-md bg-blue-600 hover:bg-blue-500 text-white transition-all disabled:opacity-40 disabled:cursor-not-allowed shadow-xs"
-            >
-              {isDispatching ? (
-                <>
-                  <span className="w-3.5 h-3.5 border-2 border-white/20 border-t-white rounded-full animate-spin" />
-                  <span>Dispatching Arena...</span>
-                </>
-              ) : (
-                <>
-                  <Play className="w-3 h-3 fill-white" />
-                  <span>Launch Task ({selectedAgentIds.length})</span>
-                </>
-              )}
-            </button>
-          </div>
-        </div>
-
-        {/* Live Active Task Pipeline Status */}
-        {activeTask && (
-          <div className="mt-4 pt-4 border-t border-white/[0.08] space-y-3">
-            <div className="p-3.5 rounded-md bg-[#0a0c12] border border-blue-500/20 flex flex-col md:flex-row justify-between md:items-center gap-3">
-              <div className="space-y-1">
-                <div className="flex items-center gap-2">
-                  <span className="text-[11px] font-mono font-semibold text-blue-400 uppercase tracking-wider">
-                    Execution Pipeline
-                  </span>
-                  <span className="text-[11px] font-mono text-zinc-500">
-                    ID: {activeTask.id.slice(0, 8)}
-                  </span>
-                  <StatusBadge status={activeTask.status} />
-                </div>
-                <div className="text-sm font-medium text-zinc-200 line-clamp-1">
-                  {activeTask.title}
-                </div>
-              </div>
-
-              <div className="flex items-center gap-3 self-end md:self-auto">
-                {activeTask.status === "completed" ? (
-                  <span className="text-xs font-mono text-emerald-400 flex items-center gap-1.5">
-                    <CheckCircle2 className="w-3.5 h-3.5" />
-                    All Agents Evaluated & Persisted
-                  </span>
-                ) : (
-                  <span className="text-xs font-mono text-amber-400 flex items-center gap-1.5">
-                    <span className="w-2 h-2 rounded-full bg-amber-400 animate-pulse" />
-                    Evaluating responses in parallel...
-                  </span>
-                )}
-                <Link
-                  href="/tasks"
-                  className="inline-flex items-center gap-1 text-xs font-semibold px-3 py-1.5 rounded bg-white/[0.06] hover:bg-white/[0.1] text-zinc-200 border border-white/[0.08] transition-colors"
-                >
-                  <span>Inspect Runs</span>
-                  <ArrowRight className="w-3 h-3" />
-                </Link>
-              </div>
-            </div>
-          </div>
-        )}
-      </div>
-
-      {/* Two-Column Telemetry Section: Recent Tasks & Live Activity */}
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-5">
-        {/* Left Column (7 cols): Recent Executions Table */}
-        <div className="lg:col-span-7 bg-[#0e1017] border border-white/[0.08] rounded-lg p-5 space-y-4">
-          <div className="flex items-center justify-between pb-3 border-b border-white/[0.06]">
-            <div className="flex items-center gap-2">
-              <Clock className="w-4 h-4 text-zinc-400" />
-              <span className="text-xs font-mono uppercase tracking-wider font-semibold text-zinc-200">
-                Recent Task Executions
-              </span>
-            </div>
-            <Link
-              href="/tasks"
-              className="text-xs font-mono text-blue-400 hover:text-blue-300 flex items-center gap-1 transition-colors"
-            >
-              <span>View All ({recentTasks.length})</span>
-              <ArrowRight className="w-3 h-3" />
+            </Link>
+            <Link href="/agents" className="text-[#888] hover:text-[#ededed] transition-colors px-4 py-3 text-[15px] font-medium">
+              Documentation
             </Link>
           </div>
+        </motion.div>
 
-          {recentTasks.length === 0 ? (
-            <div className="py-12 text-center text-xs text-zinc-500 font-mono">
-              No task runs recorded yet. Launch your first task above.
-            </div>
-          ) : (
-            <div className="overflow-x-auto">
-              <table className="w-full text-left text-xs">
-                <thead>
-                  <tr className="border-b border-white/[0.06] text-[11px] font-mono text-zinc-400 uppercase tracking-wider">
-                    <th className="pb-2 font-medium">Task</th>
-                    <th className="pb-2 font-medium">Status</th>
-                    <th className="pb-2 font-medium">Runs</th>
-                    <th className="pb-2 font-medium text-right">Action</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-white/[0.04]">
-                  {recentTasks.map((t) => (
-                    <tr key={t.id} className="group hover:bg-white/[0.02] transition-colors">
-                      <td className="py-2.5 pr-3">
-                        <div className="font-medium text-zinc-200 line-clamp-1 group-hover:text-white">
-                          {t.title}
-                        </div>
-                        <div className="text-[11px] font-mono text-zinc-500">
-                          {new Date(t.created_at).toLocaleTimeString([], {
-                            hour: "2-digit",
-                            minute: "2-digit"
-                          })}
-                        </div>
-                      </td>
-                      <td className="py-2.5 pr-3">
-                        <StatusBadge status={t.status} />
-                      </td>
-                      <td className="py-2.5 pr-3 font-mono text-zinc-400">
-                        {t.runs ? `${t.runs.length} agents` : "4 agents"}
-                      </td>
-                      <td className="py-2.5 text-right">
-                        <Link
-                          href="/tasks"
-                          className="inline-flex items-center gap-1 text-[11px] font-mono text-zinc-400 hover:text-blue-400 transition-colors"
-                        >
-                          <span>Review</span>
-                          <ArrowRight className="w-3 h-3" />
-                        </Link>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          )}
-        </div>
-
-        {/* Right Column (5 cols): Live Audit & Event Stream */}
-        <div className="lg:col-span-5 bg-[#0e1017] border border-white/[0.08] rounded-lg p-5 space-y-4">
-          <div className="flex items-center justify-between pb-3 border-b border-white/[0.06]">
-            <div className="flex items-center gap-2">
-              <Activity className="w-4 h-4 text-emerald-400" />
-              <span className="text-xs font-mono uppercase tracking-wider font-semibold text-zinc-200">
-                Live Audit Stream
-              </span>
-            </div>
-            <span className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
-              Live
-            </span>
+        {/* Right Graphic (3D 9-Piece Glowing Cube) */}
+        <motion.div 
+          className="flex-1 mt-16 lg:mt-0 flex justify-center lg:justify-end z-10 w-full"
+          initial={{ opacity: 0, scale: 0.8 }}
+          animate={{ opacity: 1, scale: 1 }}
+          transition={{ duration: 1.2, delay: 0.3, ease: "easeOut" }}
+        >
+          <div className="w-full h-72 sm:h-96 flex items-center justify-center lg:justify-end lg:translate-x-16">
+            <Pyraminx />
           </div>
+        </motion.div>
+      </motion.div>
 
-          {recentActivities.length === 0 ? (
-            <div className="py-12 text-center text-xs text-zinc-500 font-mono">
-              Waiting for incoming agent events...
-            </div>
-          ) : (
-            <div className="space-y-2.5 max-h-[340px] overflow-y-auto pr-1">
-              {recentActivities.map((event) => (
-                <div
-                  key={event.id}
-                  className="p-2.5 rounded bg-white/[0.02] border border-white/[0.04] text-xs font-mono space-y-1 hover:border-white/[0.08] transition-colors"
-                >
-                  <div className="flex items-center justify-between text-[10px] text-zinc-500">
-                    <span className="px-1.5 py-0.2 rounded bg-white/[0.04] text-zinc-400 font-medium">
-                      {event.event_type}
-                    </span>
-                    <span>
-                      {new Date(event.created_at).toLocaleTimeString([], {
-                        hour: "2-digit",
-                        minute: "2-digit",
-                        second: "2-digit"
-                      })}
-                    </span>
-                  </div>
-                  <p className="text-zinc-300 text-[11px] leading-relaxed">
-                    {event.message}
-                  </p>
-                </div>
-              ))}
-            </div>
-          )}
+      {/* Scroll-Revealed Dashboard Section */}
+      <motion.div
+        variants={containerVariants}
+        initial="hidden"
+        whileInView="visible"
+        viewport={{ once: true, margin: "-100px" }}
+        className="mt-20 max-w-[1000px] mx-auto space-y-12"
+      >
+        <motion.div variants={itemVariants} className="text-center mb-16">
+          <h2 className="text-[32px] font-semibold tracking-tight text-[#ededed]">Integrate this weekend</h2>
+          <p className="text-[16px] text-[#888] mt-3">A simple, elegant interface so you can manage agents in minutes.</p>
+        </motion.div>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+          <motion.div variants={itemVariants}>
+            <MetricCard
+              title="Total Agents"
+              value={stats.total_agents}
+              icon={<Bot className="w-4 h-4" />}
+              subtitle="Registered across the cluster"
+            />
+          </motion.div>
+          
+          <motion.div variants={itemVariants}>
+            <MetricCard
+              title="Active Tasks"
+              value={stats.active_tasks}
+              icon={<Activity className="w-4 h-4" />}
+              trend={{ value: `${stats.active_tasks > 0 ? 'Evaluating' : 'Idle'}`, isPositive: stats.active_tasks > 0 }}
+              subtitle="Currently running evaluations"
+            />
+          </motion.div>
+          
+          <motion.div variants={itemVariants}>
+            <MetricCard
+              title="Total Evaluations"
+              value={stats.total_tasks}
+              icon={<Zap className="w-4 h-4" />}
+              subtitle="Tasks completed or running"
+            />
+          </motion.div>
+          
+          <motion.div variants={itemVariants}>
+            <MetricCard
+              title="Avg Quality Score"
+              value={stats.avg_score > 0 ? `${stats.avg_score.toFixed(1)}%` : "--"}
+              icon={<Cpu className="w-4 h-4" />}
+              subtitle="Across all historical runs"
+            />
+          </motion.div>
         </div>
-      </div>
+
+        {/* Feature Cards */}
+        <motion.div variants={containerVariants} className="grid grid-cols-1 md:grid-cols-2 gap-6 mt-10">
+          <motion.div variants={itemVariants} className="resend-card p-8 group relative overflow-hidden">
+            <div className="absolute top-0 right-0 w-32 h-32 bg-emerald-500/[0.03] rounded-bl-full group-hover:scale-150 transition-transform duration-700 ease-out" />
+            <Code2 className="w-6 h-6 text-[#888] mb-6" />
+            <h3 className="text-[20px] font-medium text-[#ededed] mb-2">First-class developer experience</h3>
+            <p className="text-[14px] text-[#888] leading-relaxed">
+              Designed for speed and reliability. Connect your agentic workflows with our SDKs and REST APIs in minutes.
+            </p>
+          </motion.div>
+
+          <motion.div variants={itemVariants} className="resend-card p-8 group relative overflow-hidden">
+            <div className="absolute top-0 right-0 w-32 h-32 bg-blue-500/[0.03] rounded-bl-full group-hover:scale-150 transition-transform duration-700 ease-out" />
+            <Network className="w-6 h-6 text-[#888] mb-6" />
+            <h3 className="text-[20px] font-medium text-[#ededed] mb-2">Multi-agent Orchestration</h3>
+            <p className="text-[14px] text-[#888] leading-relaxed">
+              Route requests intelligently across different foundation models. Fallback seamlessly if a model degrades.
+            </p>
+          </motion.div>
+        </motion.div>
+      </motion.div>
     </div>
   );
 }

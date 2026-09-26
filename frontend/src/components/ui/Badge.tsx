@@ -1,96 +1,61 @@
-import React from "react";
-
-export type BadgeVariant = "default" | "success" | "warning" | "danger" | "info" | "neutral";
-
 interface BadgeProps {
   children: React.ReactNode;
-  variant?: BadgeVariant;
-  size?: "sm" | "md";
-  dot?: boolean;
+  variant?: "default" | "success" | "warning" | "danger" | "info" | "outline";
   className?: string;
+  dot?: boolean;
 }
 
-export function Badge({
-  children,
-  variant = "default",
-  size = "sm",
-  dot = false,
-  className = ""
-}: BadgeProps) {
-  const variantStyles: Record<BadgeVariant, { badge: string; dot: string }> = {
-    default: {
-      badge: "bg-blue-500/10 text-blue-400 border-blue-500/20",
-      dot: "bg-blue-400"
-    },
-    success: {
-      badge: "bg-emerald-500/10 text-emerald-400 border-emerald-500/20",
-      dot: "bg-emerald-400"
-    },
-    warning: {
-      badge: "bg-amber-500/10 text-amber-400 border-amber-500/20",
-      dot: "bg-amber-400 animate-pulse"
-    },
-    danger: {
-      badge: "bg-rose-500/10 text-rose-400 border-rose-500/20",
-      dot: "bg-rose-400"
-    },
-    info: {
-      badge: "bg-sky-500/10 text-sky-400 border-sky-500/20",
-      dot: "bg-sky-400"
-    },
-    neutral: {
-      badge: "bg-white/[0.05] text-zinc-400 border-white/[0.08]",
-      dot: "bg-zinc-500"
-    }
+export function Badge({ children, variant = "default", className = "", dot = false }: BadgeProps) {
+  const baseStyles = "inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-medium transition-colors border";
+  
+  const variants = {
+    default: "bg-[#111] text-[#ededed] border-[#333]",
+    success: "bg-[#052e16] text-[#34d399] border-[#065f46]",
+    warning: "bg-[#451a03] text-[#fbbf24] border-[#78350f]",
+    danger:  "bg-[#4c0519] text-[#fb7185] border-[#881337]",
+    info:    "bg-[#172554] text-[#60a5fa] border-[#1e3a8a]",
+    outline: "bg-transparent text-[#888] border-[#333]",
   };
 
-  const sizeStyles = {
-    sm: "text-[11px] px-2 py-0.5 font-mono",
-    md: "text-xs px-2.5 py-1 font-medium"
+  const dotColors = {
+    default: "bg-[#ededed]",
+    success: "bg-[#34d399]",
+    warning: "bg-[#fbbf24]",
+    danger:  "bg-[#fb7185]",
+    info:    "bg-[#60a5fa]",
+    outline: "bg-[#888]",
   };
-
-  const style = variantStyles[variant];
 
   return (
-    <span
-      className={`inline-flex items-center gap-1.5 rounded border tracking-tight font-medium ${style.badge} ${sizeStyles[size]} ${className}`}
-    >
-      {dot && <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${style.dot}`} />}
+    <span className={`${baseStyles} ${variants[variant]} ${className}`}>
+      {dot && (
+        <span className="relative flex h-1.5 w-1.5">
+          <span className={`animate-ping absolute inline-flex h-full w-full rounded-full opacity-75 ${dotColors[variant]}`}></span>
+          <span className={`relative inline-flex rounded-full h-1.5 w-1.5 ${dotColors[variant]}`}></span>
+        </span>
+      )}
       {children}
     </span>
   );
 }
 
 export function StatusBadge({ status }: { status: string }) {
-  const normalized = status.toLowerCase();
-
-  if (normalized === "completed" || normalized === "accepted" || normalized === "active") {
-    return (
-      <Badge variant="success" dot size="sm">
-        {status.toUpperCase()}
-      </Badge>
-    );
-  }
-
-  if (normalized === "running" || normalized === "queued" || normalized === "dispatching") {
-    return (
-      <Badge variant="warning" dot size="sm">
-        {status.toUpperCase()}
-      </Badge>
-    );
-  }
-
-  if (normalized === "failed" || normalized === "rejected") {
-    return (
-      <Badge variant="danger" dot size="sm">
-        {status.toUpperCase()}
-      </Badge>
-    );
-  }
+  const statusMap: Record<string, BadgeProps["variant"]> = {
+    running: "info",
+    queued: "warning",
+    completed: "success",
+    failed: "danger",
+    active: "success",
+    inactive: "outline",
+    error: "danger"
+  };
+  
+  const variant = statusMap[status.toLowerCase()] || "default";
+  const showDot = ["running", "active"].includes(status.toLowerCase());
 
   return (
-    <Badge variant="neutral" dot size="sm">
-      {status.toUpperCase()}
+    <Badge variant={variant} dot={showDot} className="capitalize uppercase tracking-wide font-mono text-[10px]">
+      {status}
     </Badge>
   );
 }
