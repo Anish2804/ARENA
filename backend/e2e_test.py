@@ -65,9 +65,9 @@ with httpx.Client(timeout=30.0) as client:
         status = run["status"]
         if status != "completed":
             all_success = False
-            print(f"❌ {agent_name} FAILED: {run['response']}")
+            print(f"[FAILED] {agent_name} FAILED: {run['response']}")
         else:
-            print(f"✅ {agent_name} COMPLETED. Score: {run.get('evaluation', {}).get('final_score')}")
+            print(f"[OK] {agent_name} COMPLETED. Score: {run.get('evaluation', {}).get('final_score')}")
 
     # 6. Check Leaderboard
     print("\n5. Checking leaderboard...")
@@ -77,7 +77,7 @@ with httpx.Client(timeout=30.0) as client:
     print(f"Leaderboard fetched successfully! {len(lb)} agents ranked.")
     
     if all_success:
-        print("\n🏆 ALL TESTS PASSED SUCCESSFULLY!")
+        print("\n[SUCCESS] ALL TESTS PASSED SUCCESSFULLY!")
     else:
-        print("\n⚠️ SOME AGENTS FAILED. Check logs.")
+        print("\n[WARNING] SOME AGENTS FAILED. Check logs.")
         sys.exit(1)
