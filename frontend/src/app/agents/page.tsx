@@ -303,10 +303,10 @@ export default function AgentsPage() {
                     onChange={(e) => setNewAgentModel(e.target.value)}
                     className="w-full rounded-xl border border-white/[0.08] bg-[#111] px-4 py-2.5 text-[14px] text-white/80 outline-none transition-colors focus:border-white/15 focus:bg-white/[0.05] appearance-none"
                   >
-                    <option value="openai/gpt-4">GPT-4</option>
-                    <option value="anthropic/claude-3-opus">Claude 3 Opus</option>
-                    <option value="google/gemini-1.5-pro">Gemini 1.5 Pro</option>
-                    <option value="meta/llama-3">Llama 3</option>
+                    <option value="groq/llama-3.1-8b-instant">Llama 3.1 8B Instant</option>
+                    <option value="groq/llama-3.2-11b-vision-preview">Llama 3.2 11B Vision</option>
+                    <option value="groq/mixtral-8x7b-32768">Mixtral 8x7B</option>
+                    <option value="groq/gemma2-9b-it">Gemma 2 9B</option>
                   </select>
                 </div>
                 <div className="flex justify-end gap-3 pt-4">
@@ -386,9 +386,10 @@ export default function AgentsPage() {
                     className="w-full rounded-xl border border-white/[0.08] bg-[#111] px-4 py-2.5 text-[14px] text-white/80 outline-none transition-colors focus:border-white/15 focus:bg-white/[0.05] appearance-none"
                   >
                     <option value={configuringAgent.model}>{configuringAgent.model}</option>
-                    <option value="openai/gpt-4">openai/gpt-4</option>
-                    <option value="anthropic/claude-3-opus">anthropic/claude-3-opus</option>
-                    <option value="google/gemini-1.5-pro">google/gemini-1.5-pro</option>
+                    <option value="groq/llama-3.1-8b-instant">Llama 3.1 8B Instant</option>
+                    <option value="groq/llama-3.2-11b-vision-preview">Llama 3.2 11B Vision</option>
+                    <option value="groq/mixtral-8x7b-32768">Mixtral 8x7B</option>
+                    <option value="groq/gemma2-9b-it">Gemma 2 9B</option>
                   </select>
                 </div>
                 
