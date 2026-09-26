@@ -24,6 +24,12 @@ from app.database.models import Task, Agent, AgentRun, Evaluation, ActivityEvent
 from app.schemas.task import TaskCreate, Task as TaskSchema, TaskDetail
 from app.schemas.agent import Agent as AgentSchema, AgentStats
 from app.services.task_service import process_task
+from pydantic import BaseModel
+
+class AgentCreateRequest(BaseModel):
+    name: str
+    model: str
+from app.services.task_service import process_task
 
 router = APIRouter()
 
@@ -34,9 +40,29 @@ async def get_agents(db: AsyncSession = Depends(get_db)):
         return JSONResponse(content=cached, headers={"Cache-Control": "public, max-age=10"})
     result = await db.execute(select(Agent).order_by(Agent.name.asc()))
     agents = result.scalars().all()
-    data = [{"id": a.id, "name": a.name, "role": a.role, "description": a.description, "model": a.model, "system_prompt": a.system_prompt, "status": a.status} for a in agents]
+    data = [{"id": a.id, "name": a.name, "role": a.role, "description": a.description, "model": a.model, "system_prompt": a.system_prompt, "status": a.status, "created_at": a.created_at.isoformat()} for a in agents]
     set_cache("agents", data)
     return JSONResponse(content=data, headers={"Cache-Control": "public, max-age=10"})
+
+@router.post("/agents", response_model=AgentSchema)
+async def create_agent(agent_in: AgentCreateRequest, db: AsyncSession = Depends(get_db)):
+    agent_id = f"agent-{uuid.uuid4().hex[:8]}"
+    agent = Agent(
+        id=agent_id,
+        name=agent_in.name,
+        role="Evaluator",
+        description=f"Automated evaluator agent using {agent_in.model}",
+        model=agent_in.model,
+        system_prompt="You are a strict and helpful AI assistant.",
+        status="active"
+    )
+    db.add(agent)
+    await db.commit()
+    await db.refresh(agent)
+    
+    _cache.pop("agents", None)
+    _cache.pop("leaderboard", None)
+    return agent
 
 @router.post("/tasks", response_model=TaskSchema)
 async def create_task(task_in: TaskCreate, background_tasks: BackgroundTasks, db: AsyncSession = Depends(get_db)):

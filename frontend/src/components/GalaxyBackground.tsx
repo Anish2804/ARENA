@@ -24,18 +24,32 @@ export function GalaxyBackground() {
 
     let animationFrameId: number;
 
+    let lastRenderedX = -1;
+    let lastRenderedY = -1;
+    let isInitialRender = true;
+
     const render = () => {
-      // Smoothly interpolate mouse position for a fluid trailing effect (increased speed to match mouse pace)
-      mouseX += (targetX - mouseX) * 0.3;
-      mouseY += (targetY - mouseY) * 0.3;
+      // Smoothly interpolate mouse position for a fluid trailing effect
+      mouseX += (targetX - mouseX) * 0.15;
+      mouseY += (targetY - mouseY) * 0.15;
+
+      // Optimization: Only redraw if the mouse has moved significantly
+      if (!isInitialRender && Math.abs(mouseX - lastRenderedX) < 0.5 && Math.abs(mouseY - lastRenderedY) < 0.5) {
+        animationFrameId = requestAnimationFrame(render);
+        return;
+      }
+      
+      lastRenderedX = mouseX;
+      lastRenderedY = mouseY;
+      isInitialRender = false;
 
       // Clear the canvas to transparent so the CSS dot grid shows through
       ctx.clearRect(0, 0, width, height);
 
-      // Create a soft green radial gradient that follows the mouse
+      // Create a soft purple/blue radial gradient that follows the mouse
       const gradient = ctx.createRadialGradient(mouseX, mouseY, 0, mouseX, mouseY, 600);
-      gradient.addColorStop(0, "rgba(16, 185, 129, 0.15)"); // Emerald 500 but faint
-      gradient.addColorStop(0.5, "rgba(4, 120, 87, 0.05)");  // Emerald 700 fainter
+      gradient.addColorStop(0, "rgba(226, 203, 255, 0.15)"); // Light purple (#E2CBFF)
+      gradient.addColorStop(0.5, "rgba(57, 59, 178, 0.05)");  // Deep indigo (#393BB2)
       gradient.addColorStop(1, "rgba(0, 0, 0, 0)");
 
       ctx.fillStyle = gradient;
@@ -43,7 +57,7 @@ export function GalaxyBackground() {
 
       // Add a secondary subtle static glow in the top-right
       const staticGlow = ctx.createRadialGradient(width - 200, 100, 0, width - 200, 100, 800);
-      staticGlow.addColorStop(0, "rgba(5, 150, 105, 0.08)");
+      staticGlow.addColorStop(0, "rgba(57, 59, 178, 0.10)"); // Deep indigo (#393BB2)
       staticGlow.addColorStop(1, "rgba(0, 0, 0, 0)");
       ctx.fillStyle = staticGlow;
       ctx.fillRect(0, 0, width, height);

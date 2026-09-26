@@ -3,11 +3,9 @@
 import { useState, useEffect } from "react";
 import { API_BASE_URL } from "@/lib/api";
 import { MetricCard } from "@/components/ui/MetricCard";
-import { Badge } from "@/components/ui/Badge";
-import { Bot, Cpu, Zap, Activity, Code2, Network, ArrowRight } from "lucide-react";
+import { Bot, Cpu, Zap, Activity, Code2, Network } from "lucide-react";
 import Link from "next/link";
 import { motion, useScroll, useTransform } from "framer-motion";
-import { GalaxyBackground } from "@/components/GalaxyBackground";
 import Pyraminx from "@/components/Pyraminx";
 
 interface DashboardStats {
@@ -24,6 +22,9 @@ export default function Dashboard() {
     active_tasks: 0,
     avg_score: 0,
   });
+  useEffect(() => {
+    // Empty effect to match previous structure if needed, or can be removed completely.
+  }, []);
 
   const { scrollYProgress } = useScroll();
   const y = useTransform(scrollYProgress, [0, 1], [0, -50]);
@@ -32,27 +33,27 @@ export default function Dashboard() {
   useEffect(() => {
     const fetchStats = async () => {
       try {
-        const [agentsRes, tasksRes] = await Promise.all([
+        const [agentsRes, tasksRes, leaderboardRes] = await Promise.all([
           fetch(`${API_BASE_URL}/api/agents`),
-          fetch(`${API_BASE_URL}/api/tasks`)
+          fetch(`${API_BASE_URL}/api/tasks`),
+          fetch(`${API_BASE_URL}/api/leaderboard`)
         ]);
 
-        if (agentsRes.ok && tasksRes.ok) {
+        if (agentsRes.ok && tasksRes.ok && leaderboardRes.ok) {
           const agents = await agentsRes.json();
           const tasks = await tasksRes.json();
+          const leaderboard = await leaderboardRes.json();
           
-          const active = tasks.filter((t: any) => t.status === "running" || t.status === "queued").length;
+          const active = tasks.filter((t: { status: string }) => t.status === "running" || t.status === "queued").length;
           
           let totalScore = 0;
-          let evaluations = 0;
-          tasks.forEach((t: any) => {
-            if (t.runs) {
-              t.runs.forEach((r: any) => {
-                if (r.evaluation && r.evaluation.final_score !== null) {
-                  totalScore += r.evaluation.final_score;
-                  evaluations++;
-                }
-              });
+          let validAgents = 0;
+          
+          // Calculate average quality score from the leaderboard data
+          leaderboard.forEach((l: { quality: number, total_tasks: number }) => {
+            if (l.total_tasks > 0 && l.quality > 0) {
+              totalScore += l.quality;
+              validAgents++;
             }
           });
 
@@ -60,11 +61,11 @@ export default function Dashboard() {
             total_agents: agents.length,
             total_tasks: tasks.length,
             active_tasks: active,
-            avg_score: evaluations > 0 ? totalScore / evaluations : 0
+            avg_score: validAgents > 0 ? totalScore / validAgents : 0
           });
         }
-      } catch (e) {
-        console.error("Failed to fetch dashboard stats", e);
+      } catch {
+        // Backend not reachable — expected during frontend-only dev
       }
     };
 
@@ -91,7 +92,7 @@ export default function Dashboard() {
     <div className="pb-32 relative">
       {/* Hero Section (Resend Landing Page Style) */}
       <motion.div 
-        className="min-h-[calc(100vh-120px)] flex flex-col lg:flex-row items-center justify-between relative py-20 z-10 w-full"
+        className="min-h-[calc(100vh-120px)] flex flex-col-reverse lg:flex-row items-center justify-between relative pt-8 pb-20 lg:py-20 z-10 w-full"
         style={{ y, opacity }}
       >
         <motion.div
@@ -106,7 +107,7 @@ export default function Dashboard() {
           initial={{ opacity: 0, y: 30 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.8, ease: "easeOut" }}
-          className="relative z-10 flex-1 lg:pr-10 text-left w-full max-w-2xl"
+          className="relative z-10 flex-1 lg:pr-10 text-center lg:text-left w-full max-w-2xl mt-12 lg:mt-0"
         >
           <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full border border-[#222] hover:border-[#444] transition-colors bg-[#111] mb-8 cursor-pointer">
             <span className="text-[13px] font-medium text-[#ededed]">Join us at ARENA Forward</span>
@@ -122,7 +123,7 @@ export default function Dashboard() {
             The best way to orchestrate multi-agent workflows instead of complex monolithic scripts. Deliver intelligent automation at scale.
           </p>
 
-          <div className="flex items-center gap-6 relative z-20">
+          <div className="flex flex-col sm:flex-row items-center justify-center lg:justify-start gap-4 sm:gap-6 relative z-20">
             <Link href="/tasks">
               <button className="relative inline-flex h-12 overflow-hidden rounded-full p-[1px] focus:outline-none focus:ring-2 focus:ring-emerald-400 focus:ring-offset-2 focus:ring-offset-black">
                 <span className="absolute inset-[-1000%] animate-[spin_2s_linear_infinite] bg-[conic-gradient(from_90deg_at_50%_50%,#E2CBFF_0%,#393BB2_50%,#E2CBFF_100%)]" />
@@ -131,15 +132,18 @@ export default function Dashboard() {
                 </span>
               </button>
             </Link>
-            <Link href="/agents" className="text-[#888] hover:text-[#ededed] transition-colors px-4 py-3 text-[15px] font-medium">
+            <button 
+              onClick={() => window.dispatchEvent(new CustomEvent('open-documentation'))}
+              className="text-[#888] hover:text-[#ededed] transition-colors px-4 py-3 text-[14px] font-medium"
+            >
               Documentation
-            </Link>
+            </button>
           </div>
         </motion.div>
 
         {/* Right Graphic (3D 9-Piece Glowing Cube) */}
         <motion.div 
-          className="flex-1 mt-16 lg:mt-0 flex justify-center lg:justify-end z-10 w-full"
+          className="flex-1 flex justify-center lg:justify-end z-10 w-full"
           initial={{ opacity: 0, scale: 0.8 }}
           animate={{ opacity: 1, scale: 1 }}
           transition={{ duration: 1.2, delay: 0.3, ease: "easeOut" }}
@@ -159,8 +163,8 @@ export default function Dashboard() {
         className="mt-20 max-w-[1000px] mx-auto space-y-12"
       >
         <motion.div variants={itemVariants} className="text-center mb-16">
-          <h2 className="text-[32px] font-semibold tracking-tight text-[#ededed]">Integrate this weekend</h2>
-          <p className="text-[16px] text-[#888] mt-3">A simple, elegant interface so you can manage agents in minutes.</p>
+          <h2 className="text-[32px] font-semibold tracking-tight text-[#ededed]">Orchestrate with precision</h2>
+          <p className="text-[16px] text-[#888] mt-3">Monitor, evaluate, and scale your AI workforce in real-time.</p>
         </motion.div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
@@ -223,6 +227,40 @@ export default function Dashboard() {
           </motion.div>
         </motion.div>
       </motion.div>
+
+      {/* Footer */}
+      <footer className="mt-32 relative z-20">
+        <div className="absolute inset-0 bg-gradient-to-b from-white/[0.02] to-transparent pointer-events-none" />
+        <div className="max-w-[1200px] mx-auto px-6 py-12 flex flex-col md:flex-row justify-between items-center gap-8 relative">
+          
+          <div className="flex flex-col gap-2 text-center md:text-left md:w-1/3">
+            <div className="flex items-center justify-center md:justify-start gap-2">
+              <img src="/ganesha_logo.png" alt="Anish Logo" className="w-6 h-6 object-contain drop-shadow-md" />
+              <span className="text-[15px] font-medium text-[#ededed] tracking-wide">ARENA</span>
+              <span className="text-[14px] text-[#666]">AI Orchestration</span>
+            </div>
+            <div className="text-[13px] text-[#555] mt-2">
+              &copy; {new Date().getFullYear()} ARENA. All rights reserved.
+            </div>
+          </div>
+          
+          <div className="flex items-center justify-center gap-8 md:w-1/3">
+            <a href="https://github.com/Anish2804" target="_blank" rel="noopener noreferrer" className="text-[#666] hover:text-[#ededed] transition-colors">
+              <svg viewBox="0 0 24 24" width="20" height="20" stroke="currentColor" strokeWidth="2" fill="none" strokeLinecap="round" strokeLinejoin="round"><path d="M9 19c-5 1.5-5-2.5-7-3m14 6v-3.87a3.37 3.37 0 0 0-.94-2.61c3.14-.35 6.44-1.54 6.44-7A5.44 5.44 0 0 0 20 4.77 5.07 5.07 0 0 0 19.91 1S18.73.65 16 2.48a13.38 13.38 0 0 0-7 0C6.27.65 5.09 1 5.09 1A5.07 5.07 0 0 0 5 4.77a5.44 5.44 0 0 0-1.5 3.78c0 5.42 3.3 6.61 6.44 7A3.37 3.37 0 0 0 9 18.13V22"></path></svg>
+            </a>
+            <a href="#" target="_blank" rel="noopener noreferrer" className="text-[#666] hover:text-[#0a66c2] transition-colors">
+              <svg viewBox="0 0 24 24" width="20" height="20" stroke="currentColor" strokeWidth="2" fill="none" strokeLinecap="round" strokeLinejoin="round"><path d="M16 8a6 6 0 0 1 6 6v7h-4v-7a2 2 0 0 0-2-2 2 2 0 0 0-2 2v7h-4v-7a6 6 0 0 1 6-6z"></path><rect x="2" y="9" width="4" height="12"></rect><circle cx="4" cy="4" r="2"></circle></svg>
+            </a>
+            <a href="#" target="_blank" rel="noopener noreferrer" className="text-[#666] hover:text-[#1d9bf0] transition-colors">
+              <svg viewBox="0 0 24 24" width="20" height="20" stroke="currentColor" strokeWidth="2" fill="none" strokeLinecap="round" strokeLinejoin="round"><path d="M23 3a10.9 10.9 0 0 1-3.14 1.53 4.48 4.48 0 0 0-7.86 3v1A10.66 10.66 0 0 1 3 4s-4 9 5 13a11.64 11.64 0 0 1-7 2c9 5 20 0 20-11.5a4.5 4.5 0 0 0-.08-.83A7.72 7.72 0 0 0 23 3z"></path></svg>
+            </a>
+          </div>
+
+          <div className="flex flex-col gap-2 text-center md:text-right md:w-1/3">
+            <span className="text-[13px] font-medium text-[#777]">Built by Anish</span>
+          </div>
+        </div>
+      </footer>
     </div>
   );
 }

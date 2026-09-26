@@ -6,24 +6,24 @@ interface BadgeProps {
 }
 
 export function Badge({ children, variant = "default", className = "", dot = false }: BadgeProps) {
-  const baseStyles = "inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-medium transition-colors border";
+  const baseStyles = "inline-flex items-center gap-1.5 px-2 py-0.5 rounded-md text-[10px] font-medium transition-colors border";
   
   const variants = {
-    default: "bg-[#111] text-[#ededed] border-[#333]",
-    success: "bg-[#052e16] text-[#34d399] border-[#065f46]",
-    warning: "bg-[#451a03] text-[#fbbf24] border-[#78350f]",
-    danger:  "bg-[#4c0519] text-[#fb7185] border-[#881337]",
-    info:    "bg-[#172554] text-[#60a5fa] border-[#1e3a8a]",
-    outline: "bg-transparent text-[#888] border-[#333]",
+    default: "bg-white/[0.04] text-white/40 border-white/[0.06]",
+    success: "bg-emerald-500/[0.08] text-emerald-400/70 border-emerald-500/[0.12]",
+    warning: "bg-amber-500/[0.08] text-amber-400/70 border-amber-500/[0.12]",
+    danger:  "bg-rose-500/[0.08] text-rose-400/70 border-rose-500/[0.12]",
+    info:    "bg-sky-500/[0.08] text-sky-400/70 border-sky-500/[0.12]",
+    outline: "bg-transparent text-white/25 border-white/[0.08]",
   };
 
   const dotColors = {
-    default: "bg-[#ededed]",
-    success: "bg-[#34d399]",
-    warning: "bg-[#fbbf24]",
-    danger:  "bg-[#fb7185]",
-    info:    "bg-[#60a5fa]",
-    outline: "bg-[#888]",
+    default: "bg-white/40",
+    success: "bg-emerald-400/60",
+    warning: "bg-amber-400/60",
+    danger:  "bg-rose-400/60",
+    info:    "bg-sky-400/60",
+    outline: "bg-white/25",
   };
 
   return (
@@ -54,7 +54,7 @@ export function StatusBadge({ status }: { status: string }) {
   const showDot = ["running", "active"].includes(status.toLowerCase());
 
   return (
-    <Badge variant={variant} dot={showDot} className="capitalize uppercase tracking-wide font-mono text-[10px]">
+    <Badge variant={variant} dot={showDot} className="capitalize font-mono text-[10px] tracking-wider">
       {status}
     </Badge>
   );

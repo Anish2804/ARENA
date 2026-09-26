@@ -38,7 +38,7 @@ function PyraminxPiece({ geometry, material }: { geometry: THREE.BufferGeometry,
     baseColor: new THREE.Color("#10b981"),
     targetColor: new THREE.Color("#10b981"),
     isPulsing: false,
-    timer: Math.random() * 5,
+    timer: 0,
   });
 
   useFrame((state, delta) => {
