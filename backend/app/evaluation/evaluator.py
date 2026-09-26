@@ -49,7 +49,7 @@ async def evaluate_response(task_prompt: str, agent_response: str) -> dict:
         import litellm
         
         # Use a reliable evaluator model based on available keys
-        eval_model = "groq/llama3-70b-8192" if settings.GROQ_API_KEY else "openai/gpt-4o"
+        eval_model = "groq/openai/gpt-oss-20b" if settings.GROQ_API_KEY else "openai/gpt-4o"
         
         completion = await litellm.acompletion(
             model=eval_model,

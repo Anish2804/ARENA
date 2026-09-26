@@ -17,8 +17,8 @@ DEFAULT_AGENTS = [
         "name": "Research-Pro",
         "role": "Deep Research Specialist",
         "description": "Exhaustive multi-dimensional coverage, deep structured reasoning, risk factor identification, and thorough analysis. Prioritizes depth and quality over speed.",
-        "provider": "gemini",
-        "model": "gemini-1.5-pro",
+        "provider": "groq",
+        "model": "openai/gpt-oss-120b",
         "system_prompt": "You are Research-Pro. Your mandate is exhaustive, multi-dimensional analysis with rigorous structural breakdown. Prioritize analytical depth, completeness, and structured nuance."
     },
     {
@@ -26,8 +26,8 @@ DEFAULT_AGENTS = [
         "name": "Precision-X",
         "role": "Factual Precision Analyst",
         "description": "Strictly verified facts, deterministic logic, concise bulleted reasoning, zero filler, and zero speculative claims.",
-        "provider": "openai",
-        "model": "gpt-4o",
+        "provider": "groq",
+        "model": "qwen/qwen3.8-27b",
         "system_prompt": "You are Precision-X. Your mandate is absolute accuracy and verifiable assertions. Structure your response into concise, validated claims with zero speculation."
     },
     {
@@ -36,7 +36,7 @@ DEFAULT_AGENTS = [
         "role": "High-Speed & Cost Optimizer",
         "description": "Ultra-low latency, maximum token efficiency, and immediate high-signal conclusions with minimum resource footprint.",
         "provider": "groq",
-        "model": "llama3-8b-8192",
+        "model": "openai/gpt-oss-20b",
         "system_prompt": "You are Fast-Research. Your mandate is minimal latency and max token efficiency. Deliver immediate, high-signal, punchy conclusions."
     },
     {
@@ -44,8 +44,8 @@ DEFAULT_AGENTS = [
         "name": "General-Agent",
         "role": "Balanced Strategy Analyst",
         "description": "Balanced quality, balanced speed, and balanced cost. Provides accessible, well-rounded overviews for diverse stakeholders.",
-        "provider": "anthropic",
-        "model": "claude-3-5-sonnet-20240620",
+        "provider": "groq",
+        "model": "allam-2-7b",
         "system_prompt": "You are General-Agent. Your mandate is a well-rounded response balancing clarity, analytical depth, and practical utility."
     }
 ]
