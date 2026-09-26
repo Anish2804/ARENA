@@ -47,13 +47,22 @@ async def get_agents(db: AsyncSession = Depends(get_db)):
 @router.post("/agents", response_model=AgentSchema)
 async def create_agent(agent_in: AgentCreateRequest, db: AsyncSession = Depends(get_db)):
     agent_id = f"agent-{uuid.uuid4().hex[:8]}"
+    
+    # Parse provider from model string if present (e.g., "openai/gpt-4")
+    model_str = agent_in.model
+    provider = "groq"
+    if "/" in model_str:
+        provider = model_str.split("/")[0]
+        model_str = model_str[len(provider)+1:]
+        
     agent = Agent(
         id=agent_id,
         name=agent_in.name,
-        role="Evaluator",
-        description=f"Automated evaluator agent using {agent_in.model}",
-        model=agent_in.model,
-        system_prompt="You are a strict and helpful AI assistant.",
+        role="Custom Agent",
+        description=f"Custom agent using {agent_in.model}",
+        model=model_str,
+        provider=provider,
+        system_prompt="You are a helpful AI assistant. Answer concisely and accurately.",
         status="active"
     )
     db.add(agent)
